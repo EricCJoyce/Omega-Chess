@@ -55,7 +55,20 @@ public class GameState
     private boolean whiteToMove;                                    //  Whether white is to move.
 
     /*****************************************************************
-      Constructor  */
+      Constructor
+
+                          w                     w
+                            c r n b q k b n r c
+                            p p p p p p p p p p
+                            . . . . . . . . . .
+                            . . . . . . . . . .
+                            . . . . . . . . . .
+                            . . . . . . . . . .
+                            . . . . . . . . . .
+                            . . . . . . . . . .
+                            P P P P P P P P P P
+                            C R N B Q K B N R C
+                          W                     W                   */
 
     public GameState()                                              //  Default board is starting position.
       {
