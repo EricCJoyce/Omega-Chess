@@ -7,6 +7,11 @@ Create the container.
 sudo docker build -t emscripten-java .
 ```
 
+```
+docker build -t java-wasm-gamelogic .
+docker run --rm -v "$PWD/out:/out" java-wasm-gamelogic
+```
+
 Confirm its existence.
 ```
 sudo docker images
