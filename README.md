@@ -19,7 +19,7 @@ sudo docker images
 
 Kill the container.
 ```
-sudo docker image rm emscripten-java
+sudo docker image rm java-wasm
 ```
 
 ## Zobrist hash generator
