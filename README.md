@@ -4,7 +4,7 @@ Notes on the creation of Omega Chess
 ## Docker container to compile Java to WebAssembly
 Create the container.
 ```
-sudo docker build -t emscripten-java .
+sudo docker build -t java-wasm .
 ```
 
 ```
