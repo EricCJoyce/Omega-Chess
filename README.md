@@ -1,4 +1,4 @@
-# Omega-Chess
+# [Omega Chess](https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/index.php?lang=en)
 Notes on the creation of Omega Chess
 
 ## Docker container to compile Java to WebAssembly
