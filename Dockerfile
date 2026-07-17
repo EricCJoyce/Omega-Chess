@@ -1,16 +1,47 @@
 #  Build a Docker image that can compile Java into WebAssembly.
-#          sudo docker build -t emscripten-java .
+#          sudo docker build -t java-wasm .
+# syntax=docker/dockerfile:1.7
 
-FROM eclipse-temurin:17-jdk AS build
-WORKDIR /src
+# Build stage
+# Contains the JDK, Maven, TeaVM dependencies, and the Java compiler.
+FROM maven:3.9.16-eclipse-temurin-21 AS builder
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends gradle \
- && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
 
-COPY . .
-RUN gradle teavmWasm --no-daemon
+#  Copy the Maven configuration first, allowing Docker to cache downloaded dependencies until pom.xml changes.
+COPY pom.xml .
 
-FROM busybox:1.36
-WORKDIR /out
-COPY --from=build /src/build/generated/teavm/ /out/
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn \
+      --batch-mode \
+      --no-transfer-progress \
+      -DskipTests \
+      dependency:go-offline
+
+# Now copy the Java source.
+COPY src ./src
+
+#  Compile Java to bytecode, then TeaVM bytecode to WebAssembly GC.
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn \
+      --batch-mode \
+      --no-transfer-progress \
+      -DskipTests \
+      clean package
+
+#  Verify and collect only the browser artifacts.
+RUN set -eux; \
+    WASM_DIR="target/generated/wasm/teavm"; \
+    test -f "${WASM_DIR}/classes.wasm"; \
+    test -f "${WASM_DIR}/classes.wasm-runtime.js"; \
+    mkdir -p /output; \
+    cp "${WASM_DIR}/classes.wasm" \
+       /output/omega_chess.wasm; \
+    cp "${WASM_DIR}/classes.wasm-runtime.js" \
+       /output/omega_chess.wasm-runtime.js
+
+#  Artifact-only stage
+#  This is not a runtime container. Docker can copy these files directly into a local directory with --output.
+FROM scratch AS artifact
+
+COPY --from=builder /output/ /
