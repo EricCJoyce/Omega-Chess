@@ -21,6 +21,10 @@ sudo docker image rm java-wasm
 
 ## Client-facing game logic module
 
+```
+docker run --rm -v "$PWD":/project -v "$HOME/.m2":/root/.m2 java-wasm clean package
+```
+
 ## Citation
 If this code was helpful to you, please cite this repository.
 
