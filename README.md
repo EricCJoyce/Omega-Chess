@@ -25,6 +25,36 @@ sudo docker image rm java-wasm
 sudo docker run --rm -v "$PWD":/project -v "$HOME/.m2":/root/.m2 java-wasm clean package
 ```
 
+```
+target/
+ +---classes/
+ |    +---org/
+ |         +---omegachess/
+ |              +---core/
+ |              |    +---GameEncoding.class
+ |              |    +---GameLogic.class
+ |              |    +---GameState.class
+ |              |    +---Move.class
+ |              +---wasm/
+ |                   +---GameLogicWasm.class
+ +---generated/
+ |    +---wasm/
+ |         +---classes.wasm-runtime.js
+ |         +---teavm/
+ |              +---gamelogic.wasm
+ +---generated-sources/
+ |    +---annotations/
+ +---maven-archiver/
+ |    +---pom.properties
+ +---maven-status/
+ |    +---maven-compiler-plugin/
+ |         +---compile/
+ |              +---default-compile/
+ |                   +---createdFiles.lst
+ |                   +---inputFiles.lst
+ +---omega-chess-wasm-1.0.0-SNAPSHOT.jar
+```
+
 ## Citation
 If this code was helpful to you, please cite this repository.
 
