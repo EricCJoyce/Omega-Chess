@@ -55,7 +55,7 @@ public final class GameState
     private int previousPawnMove;                                   //  Indicate which column:             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
                                                                     //  If it was a double move, these are { 1,  2,  3,  4,  5,  6,  7,  8,  9, 10};
                                                                     //  If it was a triple move, these are {11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-    private byte moveCtr;                                           //  At 50, call it a draw.
+    private int moveCtr;                                            //  At 50, call it a draw.
 
     /*****************************************************************
       Constructor
@@ -117,7 +117,7 @@ public final class GameState
         blackHasCastled = false;
         previousPawnMove = 0x00;
 
-        moveCtr = 0x00;
+        moveCtr = 0;
         whiteToMove = true;
       }
 
@@ -814,6 +814,53 @@ public final class GameState
         return movesCtr;
       }
 
+    /* Collect all "Move"s that a pawn could THEORETICALLY attack.
+       This answers a rather abstract query.
+       Hence, the Move objects returned by this method all use _NO_PROMO. */
+    public int getPawnAttacks(int index, Move[] buffer)
+      {
+        int movesCtr = 0;
+        int destination;
+
+        if(!isPawn(index))
+          return 0;
+
+        if(isWhite(index))
+          {
+            destination = ul(index);
+            if(!oob(destination))
+              {
+                buffer[movesCtr] = new Move(index, destination, _NO_PROMO);
+                movesCtr++;
+              }
+
+            destination = ur(index);
+            if(!oob(destination))
+              {
+                buffer[movesCtr] = new Move(index, destination, _NO_PROMO);
+                movesCtr++;
+              }
+          }
+        else
+          {
+            destination = dl(index);
+            if(!oob(destination))
+              {
+                buffer[movesCtr] = new Move(index, destination, _NO_PROMO);
+                movesCtr++;
+              }
+
+            destination = dr(index);
+            if(!oob(destination))
+              {
+                buffer[movesCtr] = new Move(index, destination, _NO_PROMO);
+                movesCtr++;
+              }
+          }
+
+        return movesCtr;
+      }
+
     /* "buffer" must contain at least two entries. */
     public int getPawnEnPassantAttacks(int index, Move[] buffer)
       {
@@ -1422,12 +1469,93 @@ public final class GameState
       }
 
     /*****************************************************************
-      Identity testing  */
+      Getters/Setters  */
 
     public boolean isWhiteToMove()
       {
         return whiteToMove;
       }
+
+    public byte pieceAt(int index)
+      {
+        if(index >= 0 && index < _NONE)
+          return board[index];
+        return _EMPTY;
+      }
+
+    public boolean hasWhiteKingsideLiberty()
+      {
+        return whiteKingsideLiberty;
+      }
+
+    public boolean hasWhiteQueensideLiberty()
+      {
+        return whiteQueensideLiberty;
+      }
+
+    public boolean hasBlackKingsideLiberty()
+      {
+        return blackKingsideLiberty;
+      }
+
+    public boolean hasBlackQueensideLiberty()
+      {
+        return blackQueensideLiberty;
+      }
+
+    public boolean hasWhiteCastled()
+      {
+        return whiteHasCastled;
+      }
+
+    public boolean hasBlackCastled()
+      {
+        return blackHasCastled;
+      }
+
+    public int getPreviousPawnMove()
+      {
+        return previousPawnMove;
+      }
+
+    public int getMoveCounter()
+      {
+        return moveCtr;
+      }
+
+    public void clearForDecoding()
+      {
+        int i;
+        for(i = 0; i < board.length; i++)
+          board[i] = _EMPTY;
+        return;
+      }
+
+    public void setPieceFromEncoding(int index, byte piece)
+      {
+        if(index >= 0 && index < _NONE)
+          board[index] = piece;
+        return;
+      }
+
+    public void setMetadataFromEncoding(boolean whiteToMove, boolean whiteKingside, boolean whiteQueenside, boolean whiteCastled,
+                                                             boolean blackKingside, boolean blackQueenside, boolean blackCastled,
+                                        int previousPawnMove, int moveCounter)
+      {
+        this.whiteToMove = whiteToMove;
+        this.whiteKingsideLiberty = whiteKingside;
+        this.whiteQueensideLiberty = whiteQueenside;
+        this.whiteHasCastled = whiteCastled;
+        this.blackKingsideLiberty = blackKingside;
+        this.blackQueensideLiberty = blackQueenside;
+        this.blackHasCastled = blackCastled;
+        this.previousPawnMove = previousPawnMove;
+        this.moveCtr = (byte)moveCounter;
+        return;
+      }
+
+    /*****************************************************************
+      Identity testing  */
 
     /*  Is the given index i vacant? */
     public boolean isEmpty(int i)
