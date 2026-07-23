@@ -2,14 +2,14 @@ package org.omegachess.core;
 
 public final class Move
   {
-    public int from;
-    public int to;
-    public byte promo;
+    public final int from;
+    public final int to;
+    public final byte promo;
 
-    public Move(int a, int b, byte p)
+    public Move(int from, int to, byte promo)
       {
-        from = a;
-        to = b;
-        promo = p;
+        this.from = from;
+        this.to = to;
+        this.promo = promo;
       }
   }

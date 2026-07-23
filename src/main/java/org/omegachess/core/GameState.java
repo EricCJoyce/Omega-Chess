@@ -11,6 +11,7 @@ public final class GameState
     public static final byte _PROMO_ROOK          = 0x05;
     public static final byte _PROMO_QUEEN         = 0x06;
 
+    public static final byte _EMPTY               = 0x00;
     public static final byte _WHITE_PAWN          = 0x01;
     public static final byte _WHITE_KNIGHT        = 0x02;
     public static final byte _WHITE_CHAMPION      = 0x03;
@@ -43,7 +44,7 @@ public final class GameState
                                                                     //  may be available to a player from a single index.
     public static final int _MAX_MOVES            =  512;           //  A (generous) upper bound on how many moves are available to a team in a single turn.
 
-    private byte board[];                                           //  144 characters for 144 squares.
+    private final byte[] board = new byte[_NONE];                   //  144 characters for 144 squares.
     private boolean whiteToMove;                                    //  Whether white is to move.
     private boolean whiteKingsideLiberty;                           //  6 booleans
     private boolean whiteQueensideLiberty;
@@ -75,9 +76,6 @@ public final class GameState
     public GameState()                                              //  Default board is starting position.
       {
         int i;
-        board = new char[_NONE];
-        for(i = 0; i < _NONE; i++)
-          board[i] = 0x00;
 
         board[0]  = _WHITE_WIZARD;
         board[11] = _WHITE_WIZARD;
@@ -124,38 +122,21 @@ public final class GameState
       }
 
     /*****************************************************************
-      Setters  */
+      Copy  */
 
-    public void setBoard(byte[] brd)
+    public void copyFrom(GameState src)
       {
-        int i;
-        for(i = 0; i < _NONE; i++)
-          board[i] = brd[i];
-        return;
-      }
+        System.arraycopy(src.board, 0, board, 0, _NONE);
+        whiteToMove = src.whiteToMove;
+        whiteKingsideLiberty = src.whiteKingsideLiberty;
+        whiteQueensideLiberty = src.whiteQueensideLiberty;
+        blackKingsideLiberty = src.blackKingsideLiberty;
+        blackQueensideLiberty = src.blackQueensideLiberty;
+        whiteHasCastled = src.whiteHasCastled;
+        blackHasCastled = src.blackHasCastled;
+        previousPawnMove = src.previousPawnMove;
+        moveCtr = src.moveCtr;
 
-    public void setCastlingData(boolean whiteKingside, boolean whiteQueenside,
-                                boolean blackKingside, boolean blackQueenside,
-                                boolean whiteCastled, boolean blackCastled)
-      {
-        whiteKingsideLiberty = whiteKingside;
-        whiteQueensideLiberty = whiteQueenside;
-        blackKingsideLiberty = blackKingside;
-        blackQueensideLiberty = blackQueenside;
-        whiteHasCastled = whiteCastled;
-        blackHasCastled = blackCastled;
-        return;
-      }
-
-    public void setPreviousPawnMove(int prev)
-      {
-        previousPawnMove = prev;
-        return;
-      }
-
-    public void setWhiteToMove(boolean w)
-      {
-        whiteToMove = w;
         return;
       }
 
@@ -271,6 +252,16 @@ public final class GameState
                         case _PROMO_QUEEN:    board[move.to] = _BLACK_QUEEN;     break;
                       }
                   }
+                                                                    //  Capture of a rook entails loss of castling rights.
+                if(isWhite(move.to) && isRook(move.to) && move.to == 21)
+                  whiteKingsideLiberty = false;
+                else if(isWhite(move.to) && isRook(move.to) && move.to == 14)
+                  whiteQueensideLiberty = false;
+                else if(isBlack(move.to) && isRook(move.to) && move.to == 129)
+                  blackKingsideLiberty = false;
+                else if(isBlack(move.to) && isRook(move.to) && move.to == 122)
+                  blackQueensideLiberty = false;
+
                 board[move.from] = _EMPTY;
                 previousPawnMove = 0;                               //  Zero this out.
                 moveCtr = 0;                                        //  Pawn move resets the 50-move counter.
@@ -308,6 +299,15 @@ public final class GameState
                   moveCtr = 0;
                 else                                                //  Otherwise, increase the counter.
                   moveCtr++;
+                                                                    //  Capture of a rook entails loss of castling rights.
+                if(isWhite(move.to) && isRook(move.to) && move.to == 21)
+                  whiteKingsideLiberty = false;
+                else if(isWhite(move.to) && isRook(move.to) && move.to == 14)
+                  whiteQueensideLiberty = false;
+                else if(isBlack(move.to) && isRook(move.to) && move.to == 129)
+                  blackKingsideLiberty = false;
+                else if(isBlack(move.to) && isRook(move.to) && move.to == 122)
+                  blackQueensideLiberty = false;
 
                 board[move.to] = board[move.from];
                 board[move.from] = _EMPTY;
@@ -331,6 +331,7 @@ public final class GameState
     public boolean inCheckBy(int index, boolean white)
       {
         Move[] attacks = new Move[_MAX_NUM_TARGETS];
+        int attacksLen = 0;
         int[] enemytargets = new int[_MAX_MOVES];
         int enemyStrikeCtr = 0;
         int i, j;
@@ -341,23 +342,23 @@ public final class GameState
             if((isWhite(i) && white) || (isBlack(i) && !white))
               {
                 if(isPawn(i))
-                  attacks = getPawnAttacks(i);
+                  attacksLen = getPawnAttacks(i, attacks);
                 else if(isKnight(i))
-                  attacks = getKnightMoves(i);
+                  attacksLen = getKnightMoves(i, attacks);
                 else if(isChampion(i))
-                  attacks = getChampionMoves(i);
+                  attacksLen = getChampionMoves(i, attacks);
                 else if(isWizard(i))
-                  attacks = getWizardMoves(i);
+                  attacksLen = getWizardMoves(i, attacks);
                 else if(isBishop(i))
-                  attacks = getBishopMoves(i);
+                  attacksLen = getBishopMoves(i, attacks);
                 else if(isRook(i))
-                  attacks = getRookMoves(i);
+                  attacksLen = getRookMoves(i, attacks);
                 else if(isQueen(i))
-                  attacks = getQueenMoves(i);
+                  attacksLen = getQueenMoves(i, attacks);
                 else
-                  attacks = getKingNonCastle(i);
+                  attacksLen = getKingNonCastle(i, attacks);
 
-                for(j = 0; j < attacks.length; j++)
+                for(j = 0; j < attacksLen; j++)
                   enemytargets[enemyStrikeCtr + j] = attacks[j].to;
 
                 enemyStrikeCtr += attacks.length;                   //  Increase offset.
@@ -376,10 +377,10 @@ public final class GameState
       {
         if(white)
           return ( whiteKingsideLiberty && isRook(21) && isWhite(21) &&
-                  !inCheckBy(18, 'b') && !inCheckBy(19, 'b') && !inCheckBy(20, 'b') && isEmpty(19) && isEmpty(20));
+                  !inCheckBy(18, false) && !inCheckBy(19, false) && !inCheckBy(20, false) && isEmpty(19) && isEmpty(20));
         else
           return ( blackKingsideLiberty && isRook(129) && isBlack(129) &&
-                  !inCheckBy(126, 'w') && !inCheckBy(127, 'w') && !inCheckBy(128, 'w') && isEmpty(127) && isEmpty(128));
+                  !inCheckBy(126, true) && !inCheckBy(127, true) && !inCheckBy(128, true) && isEmpty(127) && isEmpty(128));
       }
 
     /* This means, "Can I castle RIGHT NOW?" Not, "Do I still have Queenside rights?" */
@@ -387,10 +388,110 @@ public final class GameState
       {
         if(white)
           return ( whiteQueensideLiberty && isRook(14) && isWhite(14) &&
-                  !inCheckBy(18, 'b') && !inCheckBy(17, 'b') && !inCheckBy(16, 'b') && isEmpty(17) && isEmpty(16) && isEmpty(15));
+                  !inCheckBy(18, false) && !inCheckBy(17, false) && !inCheckBy(16, false) && isEmpty(17) && isEmpty(16) && isEmpty(15));
         else
-          return ( blackQueensideLiberty && isRook(56) && isBlack(56) &&
-                  !inCheckBy(126, 'w') && !inCheckBy(125, 'w') && !inCheckBy(124, 'w') && isEmpty(125) && isEmpty(124) && isEmpty(123));
+          return ( blackQueensideLiberty && isRook(122) && isBlack(122) &&
+                  !inCheckBy(126, true) && !inCheckBy(125, true) && !inCheckBy(124, true) && isEmpty(125) && isEmpty(124) && isEmpty(123));
+      }
+
+    /* Does the given move describe a kingside castle by white on the current board? */
+    public boolean isWhiteKingside(Move move)
+      {
+        return (isWhite(move.from) && isKing(move.from) && move.from == 18 && move.to == 20);
+      }
+
+    /* Does the given move describe a queenside castle by white on the current board? */
+    public boolean isWhiteQueenside(Move move)
+      {
+        return (isWhite(move.from) && isKing(move.from) && move.from == 18 && move.to == 16);
+      }
+
+    /* Does the given move describe a kingside castle by black on the current board? */
+    public boolean isBlackKingside(Move move)
+      {
+        return (isBlack(move.from) && isKing(move.from) && move.from == 126 && move.to == 128);
+      }
+
+    /* Does the given move describe a queenside castle by black on the current board? */
+    public boolean isBlackQueenside(Move move)
+      {
+        return (isBlack(move.from) && isKing(move.from) && move.from == 126 && move.to == 124);
+      }
+
+    /* Does the given move describe an en-passant capture on the current board? */
+    public boolean isEnPassantAttack(Move move)
+      {
+        if(previousPawnMove > 0)                                    //  Was there a double or triple move to attack?
+          {
+            switch(previousPawnMove)                                //  In which column did the pawn double/triple-move previously occur?
+              {
+                case 1:                                             //  Previous pawn DOUBLE move occurred in column A.
+                                                                    //  Move takes a pawn to an empty square in column A.
+                  if(isPawn(move.from) && isEmpty(move.to) && col(move.to) != col(move.from) && col(move.to) == 0)
+                    {
+                                                                    //  White captures black en passant.
+                      if(isWhite(move.from) && isBlack(l(move.from), gs) && move.to == ul(move.from))
+                        return true;
+                                                                    //  Black captures white en passant.
+                      if(isBlack(move.from) && isWhite(l(move.from), gs) && move.to == dl(move.from))
+                        return true;
+                    }
+                  break;
+                case 2:                                             //  Previous pawn DOUBLE move occurred in column B.
+                                                                    //  Move takes a pawn to an empty square in column B.
+                  if(isPawn(move.from) && isEmpty(move.to) && col(move.to) != col(move.from) && col(move.to) == 0)
+                    {
+                                                                    //  White captures black en passant.
+                      if(isWhite(move.from) && ( (isBlack(l(move.from)) && move.to == ul(move.from)) ||
+                                                 (isBlack(r(move.from)) && move.to == ur(move.from)) ))
+                        return true;
+                                                                    //  Black captures white en passant.
+                      if(isBlack(move.from) && ( (isWhite(l(move.from)) && move.to == dl(move.from)) ||
+                                                 (isWhite(r(move.from)) && move.to == dr(move.from)) ))
+                        return true;
+                    }
+                  break;
+                case 3:                                             //  Previous pawn DOUBLE move occurred in column C.
+                  break;
+                case 4:                                             //  Previous pawn DOUBLE move occurred in column D.
+                  break;
+                case 5:                                             //  Previous pawn DOUBLE move occurred in column E.
+                  break;
+                case 6:                                             //  Previous pawn DOUBLE move occurred in column F.
+                  break;
+                case 7:                                             //  Previous pawn DOUBLE move occurred in column G.
+                  break;
+                case 8:                                             //  Previous pawn DOUBLE move occurred in column H.
+                  break;
+                case 9:                                             //  Previous pawn DOUBLE move occurred in column I.
+                  break;
+                case 10:                                            //  Previous pawn DOUBLE move occurred in column J.
+                  break;
+
+                case 11:                                            //  Previous pawn TRIPLE move occurred in column A.
+                  break;
+                case 12:                                            //  Previous pawn TRIPLE move occurred in column B.
+                  break;
+                case 13:                                            //  Previous pawn TRIPLE move occurred in column C.
+                  break;
+                case 14:                                            //  Previous pawn TRIPLE move occurred in column D.
+                  break;
+                case 15:                                            //  Previous pawn TRIPLE move occurred in column E.
+                  break;
+                case 16:                                            //  Previous pawn TRIPLE move occurred in column F.
+                  break;
+                case 17:                                            //  Previous pawn TRIPLE move occurred in column G.
+                  break;
+                case 18:                                            //  Previous pawn TRIPLE move occurred in column H.
+                  break;
+                case 19:                                            //  Previous pawn TRIPLE move occurred in column I.
+                  break;
+                case 20:                                            //  Previous pawn TRIPLE move occurred in column J.
+                  break;
+              }
+          }
+
+        return false;
       }
 
     /* THIS FUNCTION FILTERS FOR CHECK!! */
@@ -408,7 +509,7 @@ public final class GameState
                 potentialmovesCtr = getMovesIndex(index, potentialmoves);
                 for(i = 0; i < potentialmovesCtr; i++)
                   buffer[movesCtr + i] = new Move(potentialmoves[i].from, potentialmoves[i].to, potentialmoves[i].promo);
-                movesCtr += potentialmoves.length;
+                movesCtr += potentialmovesCtr;
               }
           }
 
@@ -449,13 +550,7 @@ public final class GameState
               {
                 for(i = 0; i < potentialmovesCtr; i++)              //  For every move, make that move, then test the resultant board
                   {
-                    gs.setBoard( board );                           //  Copy the game state
-                    gs.setCastlingData( whiteKingsideLiberty, whiteQueensideLiberty,
-                                        blackKingsideLiberty, blackQueensideLiberty,
-                                        whiteHasCastled, blackHasCastled );
-                    gs.setPreviousPawnMove( previousPawnMove );
-                    gs.setWhiteToMove( whiteToMove );
-
+                    gs.copyFrom(this);                              //  Copy the game state
                     gs.makeMove(potentialmoves[i]);                 //  Apply the candidate move
 
                     k = gs.getKingIndex(true);                      //  Locate the white king on the new board
@@ -472,15 +567,9 @@ public final class GameState
               }
             else                                                    //  Piece is black, check for checks on the King by White
               {
-                for(i = 0; i < potentialmoves.length; i++)          //  For every move, make that move, then test the resultant board
+                for(i = 0; i < potentialmovesCtr; i++)              //  For every move, make that move, then test the resultant board
                   {
-                    gs.setBoard( board );                           //  Copy the game state
-                    gs.setCastlingData( whiteKingsideLiberty, whiteQueensideLiberty,
-                                        blackKingsideLiberty, blackQueensideLiberty,
-                                        whiteHasCastled, blackHasCastled );
-                    gs.setPreviousPawnMove( previousPawnMove );
-                    gs.setWhiteToMove( whiteToMove );
-
+                    gs.copyFrom(this);                              //  Copy the game state
                     gs.makeMove(potentialmoves[i]);                 //  Apply the candidate move
 
                     k = gs.getKingIndex(false);                     //  Locate the black king on the new board
@@ -532,7 +621,7 @@ public final class GameState
                     buffer[movesCtr + 3] = new Move(index, u(index), _PROMO_BISHOP);
                     buffer[movesCtr + 4] = new Move(index, u(index), _PROMO_ROOK);
                     buffer[movesCtr + 5] = new Move(index, u(index), _PROMO_QUEEN);
-                    buffer += 6;
+                    movesCtr += 6;
                   }
                 else
                   {
@@ -551,7 +640,7 @@ public final class GameState
                     buffer[movesCtr + 3] = new Move(index, ul(index), _PROMO_BISHOP);
                     buffer[movesCtr + 4] = new Move(index, ul(index), _PROMO_ROOK);
                     buffer[movesCtr + 5] = new Move(index, ul(index), _PROMO_QUEEN);
-                    buffer += 6;
+                    movesCtr += 6;
                   }
                 else
                   {
@@ -570,7 +659,7 @@ public final class GameState
                     buffer[movesCtr + 3] = new Move(index, ur(index), _PROMO_BISHOP);
                     buffer[movesCtr + 4] = new Move(index, ur(index), _PROMO_ROOK);
                     buffer[movesCtr + 5] = new Move(index, ur(index), _PROMO_QUEEN);
-                    buffer += 6;
+                    movesCtr += 6;
                   }
                 else
                   {
@@ -579,7 +668,7 @@ public final class GameState
                   }
               }
             enpassantLen = getPawnEnPassantAttacks(index, enpassant);
-            for(i = 0; i < enpassant.length; i++)
+            for(i = 0; i < enpassantLen; i++)
               {
                 buffer[movesCtr] = new Move(index, enpassant[i].to, _NO_PROMO);
                 movesCtr++;
@@ -610,7 +699,7 @@ public final class GameState
                     buffer[movesCtr + 3] = new Move(index, d(index), _PROMO_BISHOP);
                     buffer[movesCtr + 4] = new Move(index, d(index), _PROMO_ROOK);
                     buffer[movesCtr + 5] = new Move(index, d(index), _PROMO_QUEEN);
-                    buffer += 6;
+                    movesCtr += 6;
                   }
                 else
                   {
@@ -629,7 +718,7 @@ public final class GameState
                     buffer[movesCtr + 3] = new Move(index, dl(index), _PROMO_BISHOP);
                     buffer[movesCtr + 4] = new Move(index, dl(index), _PROMO_ROOK);
                     buffer[movesCtr + 5] = new Move(index, dl(index), _PROMO_QUEEN);
-                    buffer += 6;
+                    movesCtr += 6;
                   }
                 else
                   {
@@ -648,7 +737,7 @@ public final class GameState
                     buffer[movesCtr + 3] = new Move(index, dr(index), _PROMO_BISHOP);
                     buffer[movesCtr + 4] = new Move(index, dr(index), _PROMO_ROOK);
                     buffer[movesCtr + 5] = new Move(index, dr(index), _PROMO_QUEEN);
-                    buffer += 6;
+                    movesCtr += 6;
                   }
                 else
                   {
@@ -657,7 +746,7 @@ public final class GameState
                   }
               }
             enpassantLen = getPawnEnPassantAttacks(index, enpassant);
-            for(i = 0; i < enpassant.length; i++)
+            for(i = 0; i < enpassantLen; i++)
               {
                 buffer[movesCtr] = new Move(index, enpassant[i].to, _NO_PROMO);
                 movesCtr++;
@@ -669,7 +758,7 @@ public final class GameState
 
     public int getPawnEnPassantAttacks(int index, Move[] buffer)
       {
-        int len = 0;
+        int movesCtr = 0;
 
         if(previousPawnMove > 0 && isPawn(index))
           {
@@ -681,16 +770,12 @@ public final class GameState
                     {
                       if(isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -700,30 +785,22 @@ public final class GameState
                     {
                       if(col(index) == 1 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 1 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -733,30 +810,22 @@ public final class GameState
                     {
                       if(col(index) == 2 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 2 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -766,30 +835,22 @@ public final class GameState
                     {
                       if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -799,30 +860,22 @@ public final class GameState
                     {
                       if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -832,30 +885,22 @@ public final class GameState
                     {
                       if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -865,30 +910,22 @@ public final class GameState
                     {
                       if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -898,30 +935,22 @@ public final class GameState
                     {
                       if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 9 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 9 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -931,30 +960,22 @@ public final class GameState
                     {
                       if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 10 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 10 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -964,16 +985,12 @@ public final class GameState
                     {
                       if(isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -985,30 +1002,22 @@ public final class GameState
                     {
                       if(isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1018,58 +1027,42 @@ public final class GameState
                     {
                       if(col(index) == 1 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 1 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 1 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 1 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1079,58 +1072,42 @@ public final class GameState
                     {
                       if(col(index) == 2 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 2 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 2 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 2 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1140,58 +1117,42 @@ public final class GameState
                     {
                       if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 3 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1201,58 +1162,42 @@ public final class GameState
                     {
                       if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 4 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1262,58 +1207,42 @@ public final class GameState
                     {
                       if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 5 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1323,58 +1252,42 @@ public final class GameState
                     {
                       if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 6 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1384,58 +1297,42 @@ public final class GameState
                     {
                       if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 9 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 9 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 9 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 7 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 9 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1445,58 +1342,42 @@ public final class GameState
                     {
                       if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 10 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 10 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ul(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 10 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 8 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(col(index) == 10 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dl(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1506,30 +1387,22 @@ public final class GameState
                     {
                       if(isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = ur(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                       else if(isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
                         {
-                          buffer[movesCtr].from = index;
-                          buffer[movesCtr].to = dr(index);
-                          buffer[movesCtr].promo = _NO_PROMO;
+                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
                           movesCtr++;
                         }
                     }
@@ -1537,7 +1410,7 @@ public final class GameState
               }
           }
 
-        return len;
+        return movesCtr;
       }
 
     public int getKnightMoves(int index, Move[] buffer)
@@ -2099,6 +1972,8 @@ public final class GameState
           }
         else if(wMatNonK == 0 && bMatNonK == 0)                     //  Game is over if only Kings remain.
           return GAME_OVER_STALEMATE;
+        else if(moveCtr >= 100)                                     //  Game is over if the move counter reaches 100.
+          return GAME_OVER_STALEMATE;
 
         return GAME_ONGOING;
       }
@@ -2116,7 +1991,9 @@ public final class GameState
     /*  Is the given index i vacant? */
     public boolean isEmpty(int i)
       {
-        return (board[i] == 0x00);
+        if(i >= 0 && i < _NONE)
+          return (board[i] == 0x00);
+        return false;
       }
 
     /*  Is the given index i occupied by a White piece? */
@@ -2151,7 +2028,7 @@ public final class GameState
     /*  Is the given index i occupied by a Pawn? */
     public boolean isPawn(int i)
       {
-        if(i < _NONE)
+        if(i >= 0 && i < _NONE)
           return (board[i] == _WHITE_PAWN || board[i] == _BLACK_PAWN);
         return false;
       }
@@ -2159,7 +2036,7 @@ public final class GameState
     /*  Is the given index i occupied by a Knight? */
     public boolean isKnight(int i)
       {
-        if(i < _NONE)
+        if(i >= 0 && i < _NONE)
           return (board[i] == _WHITE_KNIGHT || board[i] == _BLACK_KNIGHT);
         return false;
       }
@@ -2167,7 +2044,7 @@ public final class GameState
     /*  Is the given index i occupied by a Champion? */
     public boolean isChampion(int i)
       {
-        if(i < _NONE)
+        if(i >= 0 && i < _NONE)
           return (board[i] == _WHITE_CHAMPION || board[i] == _BLACK_CHAMPION);
         return false;
       }
@@ -2175,7 +2052,7 @@ public final class GameState
     /*  Is the given index i occupied by a Wizard? */
     public boolean isWizard(int i)
       {
-        if(i < _NONE)
+        if(i >= 0 && i < _NONE)
           return (board[i] == _WHITE_WIZARD || board[i] == _BLACK_WIZARD);
         return false;
       }
@@ -2183,7 +2060,7 @@ public final class GameState
     /*  Is the given index i occupied by a Bishop? */
     public boolean isBishop(int i)
       {
-        if(i < _NONE)
+        if(i >= 0 && i < _NONE)
           return (board[i] == _WHITE_BISHOP || board[i] == _BLACK_BISHOP);
         return false;
       }
@@ -2191,7 +2068,7 @@ public final class GameState
     /*  Is the given index i occupied by a Rook? */
     public boolean isRook(int i)
       {
-        if(i < _NONE)
+        if(i >= 0 && i < _NONE)
           return (board[i] == _WHITE_ROOK || board[i] == _BLACK_ROOK);
         return false;
       }
@@ -2199,22 +2076,22 @@ public final class GameState
     /*  Is the given index i occupied by a Queen? */
     public boolean isQueen(int i)
       {
-        if(i < _NONE)
-          return (board[i] == _WHITE_QUEEN || board[i] == _BLACK_KING);
+        if(i >= 0 && i < _NONE)
+          return (board[i] == _WHITE_QUEEN || board[i] == _BLACK_QUEEN);
         return false;
       }
 
     /*  Is the given index i occupied by an King? */
     public boolean isKing(int i)
       {
-        if(i < _NONE)
+        if(i >= 0 && i < _NONE)
           return (board[i] == _WHITE_KING || board[i] == _BLACK_KING);
         return false;
       }
 
     public int getKingIndex(boolean white)
       {
-        int i;
+        int i = 0;
 
         while(i < _NONE)
           {
@@ -2254,6 +2131,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2270,6 +2148,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2305,6 +2184,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2321,6 +2201,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2356,6 +2237,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2372,6 +2254,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2407,6 +2290,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2423,6 +2307,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2458,6 +2343,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2474,6 +2360,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2509,6 +2396,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2525,6 +2413,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2560,6 +2449,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2576,6 +2466,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2611,6 +2502,7 @@ public final class GameState
                 else if(flags[1])                                   //  Stop and include White
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2627,6 +2519,7 @@ public final class GameState
                 else if(flags[3])                                   //  Stop and include Black
                   {
                     indices[len] = dst;
+                    len++;
                     break;
                   }
                 else
@@ -2731,7 +2624,7 @@ public final class GameState
     /*  Compute the COLUMN in which given index is included. */
     public int col(int i)
       {
-        if(i < _NONE && i >= 0)
+        if(i >= 0 && i < _NONE)
           return i % 12;
         return _NONE;
       }
@@ -2739,7 +2632,7 @@ public final class GameState
     /*  Compute the ROW in which given index is included. */
     public int row(int i)
       {
-        if(i < _NONE && i >= 0)
+        if(i >= 0 && i < _NONE)
           return (i - (i % 12)) / 12;
         return _NONE;
       }
@@ -2747,7 +2640,7 @@ public final class GameState
     /* Is the given index out of bounds or == _NONE? */
     public boolean oob(int i)
       {
-        if(i < _NONE && i >= 0)
+        if(i >= 0 && i < _NONE)
           {
             if(row(i) == 0  && col(i) > 0 && col(i) < 11)
               return true;
