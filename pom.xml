@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="
+             http://maven.apache.org/POM/4.0.0
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.omegachess</groupId>
+    <artifactId>omega-chess-wasm</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <java.version>17</java.version>
+        <teavm.version>0.15.0</teavm.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- TeaVM's implementation of the supported Java class-library subset. -->
+        <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-classlib</artifactId>
+            <version>${teavm.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Provides @JSExport and the Java/JavaScript interoperability API. -->
+        <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-jso-apis</artifactId>
+            <version>${teavm.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+
+                <configuration>
+                    <release>${java.version}</release>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.teavm</groupId>
+                <artifactId>teavm-maven-plugin</artifactId>
+                <version>${teavm.version}</version>
+
+                <executions>
+                    <execution>
+                        <id>compile-gamelogic-wasm</id>
+                        <phase>process-classes</phase>
+
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+
+                        <configuration>
+                            <mainClass>
+                                org.omegachess.wasm.GameLogicWasm
+                            </mainClass>
+
+                            <targetType>WEBASSEMBLY_GC</targetType>
+
+                            <targetDirectory>
+                                ${project.build.directory}/generated/wasm/teavm
+                            </targetDirectory>
+
+                            <targetFileName>
+                                gamelogic.wasm
+                            </targetFileName>
+
+                            <optimizationLevel>FULL</optimizationLevel>
+
+                            <minifying>true</minifying>
+                            <debugInformationGenerated>false</debugInformationGenerated>
+                            <sourceMapsGenerated>false</sourceMapsGenerated>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>copy-gamelogic-runtime</id>
+                        <phase>process-classes</phase>
+
+                        <goals>
+                            <goal>copy-webassembly-gc-runtime</goal>
+                        </goals>
+
+                        <configuration>
+                            <targetDirectory>
+                                ${project.build.directory}/generated/wasm
+                            </targetDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
