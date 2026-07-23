@@ -145,6 +145,8 @@ public final class GameState
 
     public void makeMove(Move move)
       {
+        int enPassantVic = enPassantVictim(move);
+
         if(isBlackKingside(move))                                   //  Black Kingside-Castle
           {
             board[126] = _EMPTY;
@@ -191,9 +193,9 @@ public final class GameState
             whiteHasCastled = true;                                 //  White has castled.
             previousPawnMove = 0;                                   //  Zero this out.
           }
-        else if(isEnPassantAttack(move))                            //  En-passant capture
+        else if(enPassantVic != _NONE)                              //  En-passant capture
           {
-            board[ enPassantVictim(move) ] = _EMPTY;
+            board[ enPassantVic ] = _EMPTY;
             board[move.to] = board[move.from];
             board[move.from] = _EMPTY;
 
@@ -418,80 +420,136 @@ public final class GameState
         return (isBlack(move.from) && isKing(move.from) && move.from == 126 && move.to == 124);
       }
 
+    /* Return the column in [1, 10] or _NONE in which the previous pawn-special move occurred. */
+    private int previousPawnFile()
+      {
+        if(previousPawnMove < 1 || previousPawnMove > 20)
+          return _NONE;
+
+        return ((previousPawnMove - 1) % 10) + 1;
+      }
+
+    /* Given the flag "previousPawnMove", did the previous pawn move advance 2 or 3 rows? */
+    private int previousPawnAdvance()
+      {
+        if(previousPawnMove >= 1 && previousPawnMove <= 10)
+          return 2;
+
+        if(previousPawnMove >= 11 && previousPawnMove <= 20)
+          return 3;
+
+        return 0;
+      }
+
+    /* Translate the Move-based query to an index-based query. */
+    public int enPassantVictim(Move move)
+      {
+        if(move == null || move.promo != _NO_PROMO)
+          return _NONE;
+
+        return enPassantVictim(move.from, move.to);
+      }
+
+    private int enPassantVictim(int from, int to)
+      {
+        int advance = previousPawnAdvance();
+        boolean capturingWhite, destinationWasPassed;
+        int forward, previousPawnStartRow, destinationRow, victimFile, victimRow, victim;
+        byte expectedVictim;
+
+        if(advance == 0)
+          return _NONE;
+
+        if(oob(from) || oob(to))
+          return _NONE;
+
+        if(!isPawn(from))
+          return _NONE;
+
+        if(!isEmpty(to))                                            //  En-passant capture always lands on an empty square.
+          return _NONE;
+
+        capturingWhite = isWhite(from);
+
+        if(capturingWhite != whiteToMove)                           //  Only the actual side to move may exercise the current en-passant capture privilege.
+          return _NONE;
+
+        forward = capturingWhite ? 1 : -1;
+
+        if(row(to) != row(from) + forward)                          //  The capturing pawn must move one row forward and one file sideways,
+          return _NONE;                                             //  exactly like an ordinary pawn capture.
+
+        if(Math.abs(col(to) - col(from)) != 1)
+          return _NONE;
+
+        victimFile = previousPawnFile();
+
+        if(col(to) != victimFile)                                   //  The capturing pawn must land on the file of the pawn that made the previous
+          return _NONE;                                             //  double or triple move.
+                                                                    //  The capturing side is known, so the previous mover was the opposing side.
+        previousPawnStartRow = capturingWhite ? 9 : 2;              //  White pawns start on row 2; black pawns start on row 9.
+
+        if(capturingWhite)
+          victimRow = previousPawnStartRow - advance;
+        else
+          victimRow = previousPawnStartRow + advance;
+
+        destinationRow = row(to);
+                                                                    //  The destination must be one of the squares passed through by the previous pawn.
+                                                                    //  White moves upward: startRow < passedRow < victimRow
+                                                                    //  Black moves downward: startRow > passedRow > victimRow
+        if(capturingWhite)
+          destinationWasPassed = destinationRow < previousPawnStartRow && destinationRow > victimRow;
+        else
+          destinationWasPassed = destinationRow > previousPawnStartRow && destinationRow < victimRow;
+
+        if(!destinationWasPassed)
+          return _NONE;
+
+        victim = victimRow * 12 + victimFile;
+                                                                    //  Verify that the expected enemy pawn is actually sitting
+                                                                    //  on the computed destination of the previous move.
+        expectedVictim = capturingWhite ? _BLACK_PAWN : _WHITE_PAWN;
+        if(board[victim] != expectedVictim)
+          return _NONE;
+
+        return victim;
+      }
+
     /* Does the given move describe an en-passant capture on the current board? */
     public boolean isEnPassantAttack(Move move)
       {
-        if(previousPawnMove > 0)                                    //  Was there a double or triple move to attack?
-          {
-            switch(previousPawnMove)                                //  In which column did the pawn double/triple-move previously occur?
-              {
-                case 1:                                             //  Previous pawn DOUBLE move occurred in column A.
-                                                                    //  Move takes a pawn to an empty square in column A.
-                  if(isPawn(move.from) && isEmpty(move.to) && col(move.to) != col(move.from) && col(move.to) == 0)
-                    {
-                                                                    //  White captures black en passant.
-                      if(isWhite(move.from) && isBlack(l(move.from), gs) && move.to == ul(move.from))
-                        return true;
-                                                                    //  Black captures white en passant.
-                      if(isBlack(move.from) && isWhite(l(move.from), gs) && move.to == dl(move.from))
-                        return true;
-                    }
-                  break;
-                case 2:                                             //  Previous pawn DOUBLE move occurred in column B.
-                                                                    //  Move takes a pawn to an empty square in column B.
-                  if(isPawn(move.from) && isEmpty(move.to) && col(move.to) != col(move.from) && col(move.to) == 0)
-                    {
-                                                                    //  White captures black en passant.
-                      if(isWhite(move.from) && ( (isBlack(l(move.from)) && move.to == ul(move.from)) ||
-                                                 (isBlack(r(move.from)) && move.to == ur(move.from)) ))
-                        return true;
-                                                                    //  Black captures white en passant.
-                      if(isBlack(move.from) && ( (isWhite(l(move.from)) && move.to == dl(move.from)) ||
-                                                 (isWhite(r(move.from)) && move.to == dr(move.from)) ))
-                        return true;
-                    }
-                  break;
-                case 3:                                             //  Previous pawn DOUBLE move occurred in column C.
-                  break;
-                case 4:                                             //  Previous pawn DOUBLE move occurred in column D.
-                  break;
-                case 5:                                             //  Previous pawn DOUBLE move occurred in column E.
-                  break;
-                case 6:                                             //  Previous pawn DOUBLE move occurred in column F.
-                  break;
-                case 7:                                             //  Previous pawn DOUBLE move occurred in column G.
-                  break;
-                case 8:                                             //  Previous pawn DOUBLE move occurred in column H.
-                  break;
-                case 9:                                             //  Previous pawn DOUBLE move occurred in column I.
-                  break;
-                case 10:                                            //  Previous pawn DOUBLE move occurred in column J.
-                  break;
+        return enPassantVictim(move) != _NONE;
+      }
 
-                case 11:                                            //  Previous pawn TRIPLE move occurred in column A.
-                  break;
-                case 12:                                            //  Previous pawn TRIPLE move occurred in column B.
-                  break;
-                case 13:                                            //  Previous pawn TRIPLE move occurred in column C.
-                  break;
-                case 14:                                            //  Previous pawn TRIPLE move occurred in column D.
-                  break;
-                case 15:                                            //  Previous pawn TRIPLE move occurred in column E.
-                  break;
-                case 16:                                            //  Previous pawn TRIPLE move occurred in column F.
-                  break;
-                case 17:                                            //  Previous pawn TRIPLE move occurred in column G.
-                  break;
-                case 18:                                            //  Previous pawn TRIPLE move occurred in column H.
-                  break;
-                case 19:                                            //  Previous pawn TRIPLE move occurred in column I.
-                  break;
-                case 20:                                            //  Previous pawn TRIPLE move occurred in column J.
-                  break;
-              }
-          }
+    /* Do the given indices describe a pawn double move, on the given board? */
+    public boolean isPawnDoubleMove(int from, int to)
+      {
+        if(!isPawn(from))
+          return false;
 
-        return false;
+        if(col(from) != col(to))
+          return false;
+
+        if(isWhite(from))
+          return row(from) == 2 && row(to) == 4;
+
+        return row(from) == 9 && row(to) == 7;
+      }
+
+    /* Do the given indices describe a pawn triple move, on the given board? */
+    public boolean isPawnTripleMove(int from, int to)
+      {
+        if(!isPawn(from))
+          return false;
+
+        if(col(from) != col(to))
+          return false;
+
+        if(isWhite(from))
+          return row(from) == 2 && row(to) == 5;
+
+        return row(from) == 9 && row(to) == 6;
       }
 
     /* THIS FUNCTION FILTERS FOR CHECK!! */
@@ -756,658 +814,36 @@ public final class GameState
         return movesCtr;
       }
 
+    /* "buffer" must contain at least two entries. */
     public int getPawnEnPassantAttacks(int index, Move[] buffer)
       {
         int movesCtr = 0;
+        int leftDestination, rightDestination;
 
-        if(previousPawnMove > 0 && isPawn(index))
+        if(!isPawn(index))
+          return 0;
+
+        if(isWhite(index))
           {
-            switch(previousPawnMove)
-              {
-                //////////////////////////////////////////////////////  DOUBLE moves
-                case 1:                                             //  Previous pawn double-move occurred in column A.
-                  if(col(index) == 2)                               //  "index" is in the column next to column A, where the double move occurred.
-                    {
-                      if(isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 2:                                             //  Previous pawn double-move occurred in column B.
-                  if(col(index) == 1 || col(index) == 3)            //  "index" is in the column next to column B, where the double move occurred.
-                    {
-                      if(col(index) == 1 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 1 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 3:                                             //  Previous pawn double-move occurred in column C.
-                  if(col(index) == 2 || col(index) == 4)            //  "index" is in the column next to column C, where the double move occurred.
-                    {
-                      if(col(index) == 2 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 2 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 4:                                             //  Previous pawn double-move occurred in column D.
-                  if(col(index) == 3 || col(index) == 5)            //  "index" is in the column next to column D, where the double move occurred.
-                    {
-                      if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 5:                                             //  Previous pawn double-move occurred in column E.
-                  if(col(index) == 4 || col(index) == 6)            //  "index" is in the column next to column E, where the double move occurred.
-                    {
-                      if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 6:                                             //  Previous pawn double-move occurred in column F.
-                  if(col(index) == 5 || col(index) == 7)            //  "index" is in the column next to column F, where the double move occurred.
-                    {
-                      if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 7:                                             //  Previous pawn double-move occurred in column G.
-                  if(col(index) == 6 || col(index) == 8)            //  "index" is in the column next to column G, where the double move occurred.
-                    {
-                      if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 8:                                             //  Previous pawn double-move occurred in column H.
-                  if(col(index) == 7 || col(index) == 9)            //  "index" is in the column next to column H, where the double move occurred.
-                    {
-                      if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 9 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 9 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 9:                                             //  Previous pawn double-move occurred in column I.
-                  if(col(index) == 8 || col(index) == 10)           //  "index" is in the column next to column I, where the double move occurred.
-                    {
-                      if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 10 && isWhite(index) && row(index) == 7 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 10 && isBlack(index) && row(index) == 4 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 10:                                            //  Previous pawn double-move occurred in column J.
-                  if(col(index) == 9)                               //  "index" is in the column next to column J, where the double move occurred.
-                    {
-                      if(isWhite(index) && row(index) == 7 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isBlack(index) && row(index) == 4 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
+            leftDestination = ul(index);
+            rightDestination = ur(index);
+          }
+        else
+          {
+            leftDestination = dl(index);
+            rightDestination = dr(index);
+          }
 
-                //////////////////////////////////////////////////////  TRIPLE moves
-                case 11:                                            //  Previous pawn triple-move occurred in column A.
-                  if(col(index) == 2)                               //  "index" is in the column next to column A, where the triple move occurred.
-                    {
-                      if(isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 12:                                            //  Previous pawn triple-move occurred in column B.
-                  if(col(index) == 1 || col(index) == 3)            //  "index" is in the column next to column B, where the double move occurred.
-                    {
-                      if(col(index) == 1 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 1 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 1 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 1 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 13:                                            //  Previous pawn triple-move occurred in column C.
-                  if(col(index) == 2 || col(index) == 4)            //  "index" is in the column next to column C, where the double move occurred.
-                    {
-                      if(col(index) == 2 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 2 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 2 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 2 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 14:                                            //  Previous pawn triple-move occurred in column D.
-                  if(col(index) == 3 || col(index) == 5)            //  "index" is in the column next to column D, where the double move occurred.
-                    {
-                      if(col(index) == 3 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 3 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 15:                                            //  Previous pawn triple-move occurred in column E.
-                  if(col(index) == 4 || col(index) == 6)            //  "index" is in the column next to column E, where the double move occurred.
-                    {
-                      if(col(index) == 4 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 4 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 16:                                            //  Previous pawn triple-move occurred in column F.
-                  if(col(index) == 5 || col(index) == 7)            //  "index" is in the column next to column F, where the double move occurred.
-                    {
-                      if(col(index) == 5 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 5 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 17:                                            //  Previous pawn triple-move occurred in column G.
-                  if(col(index) == 6 || col(index) == 8)            //  "index" is in the column next to column G, where the double move occurred.
-                    {
-                      if(col(index) == 6 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 6 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 18:                                            //  Previous pawn triple-move occurred in column H.
-                  if(col(index) == 7 || col(index) == 9)            //  "index" is in the column next to column H, where the double move occurred.
-                    {
-                      if(col(index) == 7 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 9 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 9 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 9 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 7 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 9 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 19:                                            //  Previous pawn triple-move occurred in column I.
-                  if(col(index) == 8 || col(index) == 10)           //  "index" is in the column next to column I, where the double move occurred.
-                    {
-                      if(col(index) == 8 && isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 10 && isWhite(index) && row(index) == 7 && isBlack(dl(index)) && isPawn(dl(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 10 && isWhite(index) && row(index) == 6 && isBlack(l(index)) && isPawn(l(index)) && isEmpty(ul(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ul(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 10 && isBlack(index) && row(index) == 4 && isWhite(ul(index)) && isPawn(ul(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 8 && isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(col(index) == 10 && isBlack(index) && row(index) == 5 && isWhite(l(index)) && isPawn(l(index)) && isEmpty(dl(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dl(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-                case 20:                                            //  Previous pawn triple-move occurred in column J.
-                  if(col(index) == 9)                               //  "index" is in the column next to column J, where the double move occurred.
-                    {
-                      if(isWhite(index) && row(index) == 7 && isBlack(dr(index)) && isPawn(dr(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isWhite(index) && row(index) == 6 && isBlack(r(index)) && isPawn(r(index)) && isEmpty(ur(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, ur(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isBlack(index) && row(index) == 4 && isWhite(ur(index)) && isPawn(ur(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                      else if(isBlack(index) && row(index) == 5 && isWhite(r(index)) && isPawn(r(index)) && isEmpty(dr(index)))
-                        {
-                          buffer[movesCtr] = new Move(index, dr(index), _NO_PROMO);
-                          movesCtr++;
-                        }
-                    }
-                  break;
-              }
+        if(!oob(leftDestination) && enPassantVictim(index, leftDestination) != _NONE)
+          {
+            buffer[movesCtr] = new Move(index, leftDestination, _NO_PROMO);
+            movesCtr++;
+          }
+
+        if(!oob(rightDestination) && enPassantVictim(index, rightDestination) != _NONE)
+          {
+            buffer[movesCtr] = new Move(index, rightDestination, _NO_PROMO);
+            movesCtr++;
           }
 
         return movesCtr;
@@ -1987,6 +1423,11 @@ public final class GameState
 
     /*****************************************************************
       Identity testing  */
+
+    public boolean isWhiteToMove()
+      {
+        return whiteToMove;
+      }
 
     /*  Is the given index i vacant? */
     public boolean isEmpty(int i)

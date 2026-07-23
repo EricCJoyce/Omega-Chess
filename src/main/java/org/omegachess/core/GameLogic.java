@@ -42,7 +42,7 @@ public final class GameLogic
         requireState(state);
         requireMoveBuffer(output);
 
-        return state.getMoves(state.whiteToMove, output);
+        return state.getMoves(state.isWhiteToMove(), output);
       }
 
     /**
@@ -92,7 +92,7 @@ public final class GameLogic
          * Do not permit callers to request moves for the wrong side during
          * ordinary gameplay.
          */
-        if(state.whiteToMove != state.isWhite(from))
+        if(state.isWhiteToMove() != state.isWhite(from))
           {
             return 0;
           }
