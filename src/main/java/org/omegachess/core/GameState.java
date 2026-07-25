@@ -553,6 +553,28 @@ public final class GameState
       }
 
     /* THIS FUNCTION FILTERS FOR CHECK!! */
+    public int getMoves(Move[] buffer)
+      {
+        int movesCtr = 0;
+        Move[] potentialmoves = new Move[_MAX_NUM_TARGETS];
+        int potentialmovesCtr;
+        int index, i;
+
+        for(index = 0; index < _NONE; index++)
+          {
+            if((whiteToMove && isWhite(index)) || (!whiteToMove && isBlack(index)))
+              {
+                potentialmovesCtr = getMovesIndex(index, potentialmoves);
+                for(i = 0; i < potentialmovesCtr; i++)
+                  buffer[movesCtr + i] = new Move(potentialmoves[i].from, potentialmoves[i].to, potentialmoves[i].promo);
+                movesCtr += potentialmovesCtr;
+              }
+          }
+
+        return movesCtr;
+      }
+
+    /* THIS FUNCTION FILTERS FOR CHECK!! */
     public int getMoves(boolean white, Move[] buffer)
       {
         int movesCtr = 0;

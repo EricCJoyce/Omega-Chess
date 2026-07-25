@@ -1,134 +1,87 @@
 package org.omegachess.core;
 
-/**
- * High-level, platform-independent interface to Omega Chess game logic.
- *
- * This class contains no TeaVM, JavaScript, CLI, serialization, or browser
- * code. Both GameLogicWasm and GameLogicCli should call this class.
- */
+/* High-level, platform-independent interface to Omega Chess game logic.
+   This class contains no TeaVM, JavaScript, CLI, serialization, or browser code.
+   Both GameLogicWasm and GameLogicCli call this class. */
 public final class GameLogic
   {
     private GameLogic()
       {
-        /*
-         * Static utility class.
-         *
-         * Prevent accidental construction.
-         */
       }
 
-    /**
-     * Construct the canonical Omega Chess starting position.
-     *
-     * Allocating one GameState here is harmless. This method is normally
-     * called only when starting a new game.
-     */
+    /* Construct the Omega Chess starting position.
+       Allocating one GameState here is harmless.
+       This method is normally called only when starting a new game. */
     public static GameState createStartingPosition()
       {
         return new GameState();
       }
 
-    /**
-     * Generate every legal move for the side currently on move.
-     *
-     * Only output[0] through output[count - 1] contain valid moves.
-     *
-     * @param state  position to examine
-     * @param output caller-owned fixed-capacity move buffer
-     * @return number of legal moves written
-     */
-    public static int legalMoves(GameState state, Move[] output)
+    /* Generate every legal move for the side currently on move.
+       Only buffer[0] through buffer[count - 1] contain valid moves.
+       gs     = the position to examine.
+       buffer = caller-owned fixed-capacity move array.
+       Return number of legal moves written. */
+    public static int legalMoves(GameState gs, Move[] buffer)
       {
-        requireState(state);
-        requireMoveBuffer(output);
-
-        return state.getMoves(state.isWhiteToMove(), output);
+        requireState(gs);
+        requireMoveBuffer(buffer);
+        return gs.getMoves(buffer);
       }
 
-    /**
-     * Generate every legal move for a specified side.
-     *
-     * This is useful for diagnostics and some search operations, but ordinary
-     * gameplay should normally call legalMoves(state, output).
-     */
-    public static int legalMoves(GameState state, boolean white, Move[] output)
+    /* Generate every legal move for a specified side.
+       Useful for diagnostics and some search operations. */
+    public static int legalMoves(GameState gs, boolean white, Move[] buffer)
       {
-        requireState(state);
-        requireMoveBuffer(output);
-
-        return state.getMoves(white, output);
+        requireState(gs);
+        requireMoveBuffer(buffer);
+        return gs.getMoves(white, buffer);
       }
 
-    /**
-     * Generate legal moves for one occupied square.
-     *
-     * The output buffer must have room for GameState._MAX_NUM_TARGETS moves.
-     */
-    public static int legalMovesFrom(GameState state, int from, Move[] output)
+    /* Generate legal moves for one occupied square.
+       The output buffer must have room for GameState._MAX_NUM_TARGETS moves. */
+    public static int legalMovesFrom(GameState gs, int from, Move[] buffer)
       {
-        requireState(state);
+        requireState(gs);
 
-        if(output == null)
-          {
-            throw new IllegalArgumentException("Move output buffer cannot be null");
-          }
+        if(buffer == null)
+          throw new IllegalArgumentException("Move output buffer cannot be null.");
 
-        if(output.length < GameState._MAX_NUM_TARGETS)
-          {
-            throw new IllegalArgumentException("Per-piece move buffer is too small");
-          }
+        if(buffer.length < GameState._MAX_NUM_TARGETS)
+          throw new IllegalArgumentException("Per-piece move buffer is too small.");
 
         if(from < 0 || from >= GameState._NONE)
-          {
-            return 0;
-          }
+          return 0;
 
-        if(state.isEmpty(from))
-          {
-            return 0;
-          }
+        if(gs.isEmpty(from))
+          return 0;
 
-        /*
-         * Do not permit callers to request moves for the wrong side during
-         * ordinary gameplay.
-         */
-        if(state.isWhiteToMove() != state.isWhite(from))
-          {
-            return 0;
-          }
+        if(gs.isWhiteToMove() != gs.isWhite(from))                  //  Do not permit callers to request moves for the wrong side during ordinary gameplay.
+          return 0;
 
-        return state.getMovesIndex(from, output);
+        return gs.getMovesIndex(from, buffer);
       }
 
-    /**
-     * Apply a move without checking whether it is legal.
-     *
-     * Search code may use this after choosing a move returned by legalMoves().
-     * Browser and CLI input should normally use applyLegalMove().
-     */
-    public static void applyUncheckedMove(GameState state, Move move)
+    /* Apply a move without checking whether it is legal.
+       Search code may use this after choosing a move returned by legalMoves().
+       Browser and CLI input should normally use applyLegalMove(). */
+    public static void applyUncheckedMove(GameState gs, Move move)
       {
-        requireState(state);
+        requireState(gs);
         requireMove(move);
-
-        state.makeMove(move);
+        gs.makeMove(move);
       }
 
-    /**
-     * Verify and apply a requested move.
-     *
-     * No new move list is allocated. The caller supplies reusable scratch
-     * storage.
-     *
-     * @return true if the move was legal and applied; false otherwise
-     */
-    public static boolean applyLegalMove(GameState state, Move requestedMove, Move[] scratchMoves)
+    /* Verify and apply a requested move.
+       No new move list is allocated. The caller supplies reusable scratch storage.
+       Return true if the move was legal and applied; false otherwise. */
+    public static boolean applyLegalMove(GameState gs, Move requestedMove, Move[] scratchMoves)
       {
-        requireState(state);
+        requireState(gs);
         requireMove(requestedMove);
         requireMoveBuffer(scratchMoves);
 
-        int count = legalMoves(state, scratchMoves);
+        int count = legalMoves(gs, scratchMoves);
 
         for(int i = 0; i < count; i++)
           {
@@ -136,11 +89,8 @@ public final class GameLogic
 
             if(sameMove(legalMove, requestedMove))
               {
-                /*
-                 * Apply the move generated by the engine, rather than the
-                 * caller's object. This guarantees canonical move data.
-                 */
-                state.makeMove(legalMove);
+                                                                    //  Apply the move generated by the engine, rather than the caller's object.
+                gs.makeMove(legalMove);                             //  This guarantees canonical move data.
                 return true;
               }
           }
@@ -148,104 +98,80 @@ public final class GameLogic
         return false;
       }
 
-    /**
-     * Copy a position and apply a known-legal move to the destination.
-     *
-     * Useful during search without allocating a new GameState for every child.
-     */
-    public static void copyAndApplyUnchecked(GameState source, Move move, GameState destination)
+    /* Copy a position and apply a known-legal move to the destination.
+       Useful during search without allocating a new GameState for every child. */
+    public static void copyAndApplyUnchecked(GameState src, Move move, GameState dst)
       {
-        requireState(source);
-        requireState(destination);
+        requireState(src);
+        requireState(dst);
         requireMove(move);
 
-        if(source == destination)
-          {
-            throw new IllegalArgumentException("Source and destination must be different GameState objects");
-          }
+        if(src == dst)
+          throw new IllegalArgumentException("Source and destination must be different GameState objects.");
 
-        destination.copyFrom(source);
-        destination.makeMove(move);
+        dst.copyFrom(src);
+        dst.makeMove(move);
       }
 
-    /**
-     * Return GameState.GAME_ONGOING or one of its terminal result constants.
-     */
-    public static int terminalStatus(GameState state)
+    /* Return GameState.GAME_ONGOING or one of its terminal result constants. */
+    public static int terminalStatus(GameState gs)
       {
-        requireState(state);
-        return state.isWin();
+        requireState(gs);
+        return gs.isWin();
       }
 
-    public static boolean isTerminal(GameState state)
+    public static boolean isTerminal(GameState gs)
       {
-        return terminalStatus(state) != GameState.GAME_ONGOING;
+        return terminalStatus(gs) != GameState.GAME_ONGOING;
       }
 
-    /**
-     * Return whether the specified side's king is currently in check.
-     */
-    public static boolean isInCheck(GameState state, boolean white)
+    /* Return whether the specified side's king is currently in check. */
+    public static boolean isInCheck(GameState gs, boolean white)
       {
-        requireState(state);
+        requireState(gs);
 
-        int king = state.getKingIndex(white);
+        int king = gs.getKingIndex(white);
 
         if(king == GameState._NONE)
-          {
-            /*
-             * A missing king indicates an invalid position.
-             */
-            return true;
-          }
+          throw new Exception("Given board contains no king.");
 
-        return state.inCheckBy(king, !white);
+        return gs.inCheckBy(king, !white);
       }
 
-    /**
-     * Compare moves by value rather than object identity.
-     */
+    /* Compare moves by value rather than object identity. */
     public static boolean sameMove(Move a, Move b)
       {
         if(a == b)
-          {
-            return true;
-          }
+          return true;
 
         if(a == null || b == null)
-          {
-            return false;
-          }
+          return false;
 
         return a.from == b.from && a.to == b.to && a.promo == b.promo;
       }
 
-    private static void requireState(GameState state)
+    private static void requireState(GameState gs)
       {
-        if(state == null)
-          {
-            throw new IllegalArgumentException("GameState cannot be null");
-          }
+        if(gs == null)
+          throw new IllegalArgumentException("GameState cannot be null.");
+        return;
       }
 
     private static void requireMove(Move move)
       {
         if(move == null)
-          {
-            throw new IllegalArgumentException("Move cannot be null");
-          }
+          throw new IllegalArgumentException("Move cannot be null.");
+        return;
       }
 
     private static void requireMoveBuffer(Move[] buffer)
       {
         if(buffer == null)
-          {
-            throw new IllegalArgumentException("Move output buffer cannot be null");
-          }
+          throw new IllegalArgumentException("Move output buffer cannot be null.");
 
         if(buffer.length < GameState._MAX_MOVES)
-          {
-            throw new IllegalArgumentException("Move output buffer must contain at least " + GameState._MAX_MOVES + " entries");
-          }
+          throw new IllegalArgumentException("Move output buffer must contain at least " + GameState._MAX_MOVES + " entries.");
+
+        return;
       }
   }
