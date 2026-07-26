@@ -305,13 +305,13 @@ public final class GameLogicCli
             return Character.toString(file) + row;
           }
         else if(index == 0)
-          return "W1"
+          return "W1";
         else if(index == 11)
-          return "W2"
+          return "W2";
         else if(index == 132)                                       //  Yes, Omega Chess corner notation runs "counter clockwise."
-          return "W4"
+          return "W4";
         else if(index == 143)
-          return "W3"
+          return "W3";
 
         return "@" + index;                                         //  Should never happen.
       }
