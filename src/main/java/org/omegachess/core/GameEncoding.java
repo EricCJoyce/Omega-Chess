@@ -35,43 +35,43 @@ public final class GameEncoding
       }
 
     /* Encode a GameState into a newly allocated 107-byte array. */
-    public static byte[] encodeState(GameState state)
+    public static byte[] encodeState(GameState gs)
       {
         byte[] encoded = new byte[GameState._GAMESTATE_BYTE_SIZE];
-        encodeState(state, encoded);
+        encodeState(gs, encoded);
         return encoded;
       }
 
     /* Encode a GameState into a caller-owned buffer. */
-    public static void encodeState(GameState state, byte[] encoded)
+    public static void encodeState(GameState gs, byte[] encoded)
       {
         int r, c, index;
         int previousPawnMove, moveCounter;
         int flags = 0;
         int output;
 
-        requireState(state);
+        requireState(gs);
         requireStateBuffer(encoded);
 
-        if(state.isWhiteToMove())
+        if(gs.isWhiteToMove())
           flags |= WHITE_TO_MOVE_MASK;
 
-        if(state.hasWhiteKingsideLiberty())
+        if(gs.hasWhiteKingsideLiberty())
           flags |= WHITE_KINGSIDE_MASK;
 
-        if(state.hasWhiteQueensideLiberty())
+        if(gs.hasWhiteQueensideLiberty())
           flags |= WHITE_QUEENSIDE_MASK;
 
-        if(state.hasWhiteCastled())
+        if(gs.hasWhiteCastled())
           flags |= WHITE_CASTLED_MASK;
 
-        if(state.hasBlackKingsideLiberty())
+        if(gs.hasBlackKingsideLiberty())
           flags |= BLACK_KINGSIDE_MASK;
 
-        if(state.hasBlackQueensideLiberty())
+        if(gs.hasBlackQueensideLiberty())
           flags |= BLACK_QUEENSIDE_MASK;
 
-        if(state.hasBlackCastled())
+        if(gs.hasBlackCastled())
           flags |= BLACK_CASTLED_MASK;
                                                                     //  Flags may be between 0 and 254.
                                                                     //  Values above 127 appear negative as Java bytes,
@@ -80,43 +80,43 @@ public final class GameEncoding
 
         output = BOARD_START_INDEX;
                                                                     //  White-side extension squares.
-        encoded[output++] = state.pieceAt(0);
-        encoded[output++] = state.pieceAt(11);
+        encoded[output++] = gs.pieceAt(0);
+        encoded[output++] = gs.pieceAt(11);
                                                                     //  Central 10 x 10 board.
         for(r = 1; r <= 10; r++)
           {
             for(c = 1; c <= 10; c++)
               {
                 index = r * 12 + c;
-                encoded[output++] = state.pieceAt(index);
+                encoded[output++] = gs.pieceAt(index);
               }
           }
                                                                     //  Black-side extension squares
-        encoded[output++] = state.pieceAt(132);
-        encoded[output++] = state.pieceAt(143);
+        encoded[output++] = gs.pieceAt(132);
+        encoded[output++] = gs.pieceAt(143);
 
-        previousPawnMove = state.getPreviousPawnMove();
-        moveCounter = state.getMoveCounter();
+        previousPawnMove = gs.getPreviousPawnMove();
+        moveCounter = gs.getMoveCounter();
         encoded[PREVIOUS_PAWN_MOVE_INDEX] = (byte)previousPawnMove;
         encoded[MOVE_COUNTER_INDEX] = (byte)moveCounter;
 
         return;
       }
 
-    /* Decode a 107-byte state into a newly allocated GameState. */
+    /* Decode a 107-byte game state into a newly allocated GameState. */
     public static GameState decodeState(byte[] encoded)
       {
-        GameState state = new GameState();
-        decodeState(encoded, state);
-        return state;
+        GameState gs = new GameState();
+        decodeState(encoded, gs);
+        return gs;
       }
 
-    /* Decode a 107-byte state into an existing GameState. */
-    public static void decodeState(byte[] encoded, GameState state)
+    /* Decode a 107-byte game state into an existing GameState. */
+    public static void decodeState(byte[] encoded, GameState gs)
       {
         int flags;
         requireStateBuffer(encoded);
-        requireState(state);
+        requireState(gs);
         flags = encoded[FLAGS_INDEX] & 0xFF;                        //  Convert the signed Java byte into an unsigned integer before applying masks.
 
         boolean whiteToMove = (flags & WHITE_TO_MOVE_MASK) != 0;
@@ -135,24 +135,24 @@ public final class GameEncoding
         if(moveCounter > 100)                                       //  Force draw.
           moveCounter = 100;
 
-        state.clearForDecoding();                                   //  Clear all 144 internal squares, including the non-playable sentinel border.
+        gs.clearForDecoding();                                      //  Clear all 144 internal squares, including the non-playable sentinel border.
 
         int input = BOARD_START_INDEX;
 
-        state.setPieceFromEncoding(0, checkedPiece(encoded[input++]));
-        state.setPieceFromEncoding(11, checkedPiece(encoded[input++]));
+        gs.setPieceFromEncoding(0, checkedPiece(encoded[input++]));
+        gs.setPieceFromEncoding(11, checkedPiece(encoded[input++]));
 
         for(int row = 1; row <= 10; row++)
           {
             for(int col = 1; col <= 10; col++)
               {
                 int boardIndex = row * 12 + col;
-                state.setPieceFromEncoding(boardIndex, checkedPiece(encoded[input++]));
+                gs.setPieceFromEncoding(boardIndex, checkedPiece(encoded[input++]));
               }
           }
 
-        state.setPieceFromEncoding(132, checkedPiece(encoded[input++]));
-        state.setPieceFromEncoding(143, checkedPiece(encoded[input++]));
+        gs.setPieceFromEncoding(132, checkedPiece(encoded[input++]));
+        gs.setPieceFromEncoding(143, checkedPiece(encoded[input++]));
 
         if(input != PREVIOUS_PAWN_MOVE_INDEX)
           {
@@ -161,9 +161,9 @@ public final class GameEncoding
             );
           }
 
-        state.setMetadataFromEncoding(whiteToMove, whiteKingside, whiteQueenside, whiteCastled,
-                                                   blackKingside, blackQueenside, blackCastled,
-                                      previousPawnMove, moveCounter);
+        gs.setMetadataFromEncoding(whiteToMove, whiteKingside, whiteQueenside, whiteCastled,
+                                                blackKingside, blackQueenside, blackCastled,
+                                   previousPawnMove, moveCounter);
         return;
       }
 
@@ -297,9 +297,9 @@ public final class GameEncoding
         return encodedPiece;
       }
 
-    private static void requireState(GameState state)
+    private static void requireState(GameState gs)
       {
-        if(state == null)
+        if(gs == null)
           throw new IllegalArgumentException("GameState cannot be null");
       }
 

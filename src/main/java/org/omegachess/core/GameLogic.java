@@ -133,7 +133,7 @@ public final class GameLogic
         int king = gs.getKingIndex(white);
 
         if(king == GameState._NONE)
-          throw new Exception("Given board contains no king.");
+          throw new IllegalArgumentException("Given board contains no king.");
 
         return gs.inCheckBy(king, !white);
       }

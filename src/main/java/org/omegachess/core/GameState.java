@@ -363,7 +363,7 @@ public final class GameState
                 for(j = 0; j < attacksLen; j++)
                   enemytargets[enemyStrikeCtr + j] = attacks[j].to;
 
-                enemyStrikeCtr += attacks.length;                   //  Increase offset.
+                enemyStrikeCtr += attacksLen;                       //  Increase offset.
               }
           }
 
@@ -2246,5 +2246,34 @@ public final class GameState
           }
 
         return true;
+      }
+
+    /* Return a sing-character string according to the piece at index "i". */
+    public String symbol(int i)
+      {
+        if(!oob(i))
+          {
+            switch(board[i])
+              {
+                case _EMPTY:           return ".";
+                case _WHITE_PAWN:      return "P";
+                case _WHITE_KNIGHT:    return "N";
+                case _WHITE_CHAMPION:  return "C";
+                case _WHITE_WIZARD:    return "W";
+                case _WHITE_BISHOP:    return "B";
+                case _WHITE_ROOK:      return "R";
+                case _WHITE_QUEEN:     return "Q";
+                case _WHITE_KING:      return "K";
+                case _BLACK_PAWN:      return "p";
+                case _BLACK_KNIGHT:    return "n";
+                case _BLACK_CHAMPION:  return "c";
+                case _BLACK_WIZARD:    return "w";
+                case _BLACK_BISHOP:    return "b";
+                case _BLACK_ROOK:      return "r";
+                case _BLACK_QUEEN:     return "q";
+                case _BLACK_KING:      return "k";
+              }
+          }
+        return " ";
       }
   }
