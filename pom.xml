@@ -38,6 +38,7 @@
     </dependencies>
 
     <build>
+        <finalName>omega-chess-cli</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -98,9 +99,27 @@
                             <targetDirectory>
                                 ${project.build.directory}/generated/wasm
                             </targetDirectory>
+                            <runtimeFileName>
+                                gamelogic-wasm-runtime.js
+                            </runtimeFileName>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>
+                                org.omegachess.cli.GameLogicCli
+                            </mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>
