@@ -14,6 +14,10 @@ import org.omegachess.core.GameLogic;
 import org.omegachess.core.GameState;
 import org.omegachess.core.Move;
 
+import org.omegachess.core.features.FeatureEncoding;
+import org.omegachess.core.features.FeatureScratch;
+import org.omegachess.core.features.FeatureSpec;
+
 /* Persistent JSONL command-line interface for Omega Chess.
 
    Protocol rules:
@@ -27,6 +31,8 @@ public final class GameLogicCli
   {
     private static final String VERSION = "1.0";
     private static final GameState STATE = new GameState();
+    private static final FeatureScratch FEATURE_SCRATCH = new FeatureScratch();
+    private static final float[] FEATURE_BUFFER = new float[FeatureSpec.FEATURE_COUNT];
     private static final Move[] MOVE_BUFFER = new Move[GameState._MAX_MOVES];
     private static final Move[] LEGALITY_BUFFER = new Move[GameState._MAX_MOVES];
 
@@ -100,6 +106,10 @@ public final class GameLogicCli
 
             case "print_move":
               return printMoveResponse(request);
+
+            case "interpret":
+            case "features":
+              return interpretResponse(request);
 
             case "quit":
               return "{\"ok\":true,\"cmd\":\"quit\"}";
@@ -216,6 +226,46 @@ public final class GameLogicCli
                "\"notation\":" + jsonString(notation) + "}";
       }
 
+    private static String interpretResponse(Map<String, String> request)
+      {
+        int i;
+        decodeStateIntoWorkingState(require(request, "state"));
+        FeatureEncoding.encode(STATE, FEATURE_BUFFER, FEATURE_SCRATCH);
+                                                                    //  Most values are short representations such as 0.0, 1.0, 2.0.
+                                                                    //  This capacity merely reduces StringBuilder growth.
+        StringBuilder response = new StringBuilder(256 + FeatureSpec.FEATURE_COUNT * 5);
+        response.append("{\"ok\":true,\"cmd\":\"interpret\",");
+        response.append("\"feature_version\":");
+        response.append(jsonString(FeatureSpec.VERSION));
+        response.append(",\"layout_version\":1");
+        response.append(",\"layout\":\"plane_row_column\"");
+        response.append(",\"shape\":[");
+        response.append(FeatureSpec.PLANES).append(',');
+        response.append(FeatureSpec.HEIGHT).append(',');
+        response.append(FeatureSpec.WIDTH).append(']');
+        response.append(",\"feature_count\":");
+        response.append(FeatureSpec.FEATURE_COUNT);
+        response.append(",\"features\":[");
+
+        for(i = 0; i < FeatureSpec.FEATURE_COUNT; i++)
+          {
+            if(i > 0)
+              response.append(',');
+            appendJsonFloat(response, FEATURE_BUFFER[i]);
+          }
+
+        response.append("]}");
+        return response.toString();
+      }
+
+    private static void appendJsonFloat(StringBuilder output, float value)
+      {
+        if(!Float.isFinite(value))
+          throw new IllegalStateException("Feature encoder produced a non-finite value: " + value);
+        output.append(Float.toString(value));
+        return;
+      }
+
     private static void decodeStateIntoWorkingState(String stateHex)
       {
         byte[] encoded = hexToBytesExact(stateHex, GameState._GAMESTATE_BYTE_SIZE, "state");
@@ -308,10 +358,10 @@ public final class GameLogicCli
           return "W1";
         else if(index == 11)
           return "W2";
-        else if(index == 132)                                       //  Yes, Omega Chess corner notation runs "counter clockwise."
-          return "W4";
+        else if(index == 132)                                       //  Omega Chess corner notation runs "counter clockwise,"
+          return "W3";                                              //  but I run row-major!
         else if(index == 143)
-          return "W3";
+          return "W4";
 
         return "@" + index;                                         //  Should never happen.
       }
