@@ -132,6 +132,15 @@ public final class FeatureSpec
                                                          "move_counter",
                                                          "checker_count"};
 
+    public static final String[] PIECE_NAMES          = {"pawn",
+                                                         "knight",
+                                                         "champion",
+                                                         "wizard",
+                                                         "bishop",
+                                                         "rook",
+                                                         "queen",
+                                                         "king"};
+
     public static final int PIECE_TYPES               = 8;
 
     public static final int PIECE_PAWN                = 0;
@@ -143,21 +152,34 @@ public final class FeatureSpec
     public static final int PIECE_QUEEN               = 6;
     public static final int PIECE_KING                = 7;
 
-    public static final String[] PIECE_NAMES          = {"pawn",
-                                                         "knight",
-                                                         "champion",
-                                                         "wizard",
-                                                         "bishop",
-                                                         "rook",
-                                                         "queen",
-                                                         "king"};
+    public static final int XRAY_BISHOP = 0;
+    public static final int XRAY_ROOK   = 1;
+    public static final int XRAY_QUEEN  = 2;
+    public static final int XRAY_TYPES  = 3;
 
     private FeatureSpec()
       {
       }
 
-    public static int index(int plane, int row, int column)
+    public static int index(int plane, int tensorIndex)
       {
-        return plane * SQUARES + row * WIDTH + column;
+        return plane * SQUARES + tensorIndex;
+      }
+
+    public static int index(int plane, int row, int col)
+      {
+        return plane * SQUARES + row * WIDTH + col;
+      }
+
+    /* Check allocation and length; potentially throw an exception. */
+    public static void validateBuffer(float[] buffer)
+      {
+        if(buffer == null)
+          throw new IllegalArgumentException("Feature buffer cannot be null.");
+
+        if(buffer.length < FEATURE_COUNT)
+          throw new IllegalArgumentException("Feature buffer is too small: expected at least " + FEATURE_COUNT + " values, found " + buffer.length + ".");
+
+        return;
       }
   }
