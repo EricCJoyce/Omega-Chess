@@ -3,6 +3,7 @@ package org.omegachess.core.features;
 import java.util.Arrays;
 
 import org.omegachess.core.GameState;
+import org.omegachess.core.Move;
 
 public final class FeatureEncoding
   {
@@ -24,9 +25,10 @@ public final class FeatureEncoding
         writeXrays(gs, scratch, buffer);
         writePins(gs, scratch, buffer);
         writeKingFeatures(gs, scratch, buffer);
-        //writeMobility(scratch, buffer);
-        //writeDefendedAndUndefended(gs, scratch, buffer);
-        //writeRuleState(gs, buffer);
+        writeMobility(gs, scratch, buffer);
+        writeDefended(gs, scratch, buffer);
+        writeUndefendedAndAttacked(gs, scratch, buffer);
+        writeStates(gs, scratch, buffer);
       }
 
     private static void writeValidMask(GameState gs, float[] buffer)
@@ -198,18 +200,147 @@ public final class FeatureEncoding
         return;
       }
 
-    private static void writeMobility(FeatureScratch scratch, float[] buffer)
+    private static void writeMobility(GameState gs, FeatureScratch scratch, float[] buffer)
       {
+        int boardIndex, tensorIndex;
+        boolean whiteToMove = gs.isWhiteToMove();
+        int[] ownMobility = whiteToMove ? scratch.whiteMobility : scratch.blackMobility;
+        int[] enemyMobility =whiteToMove ? scratch.blackMobility : scratch.whiteMobility;
+
+        for(boardIndex = 0; boardIndex < FeatureSpec.SQUARES; boardIndex++)
+          {
+            if(gs.oob(boardIndex))
+              continue;
+
+            tensorIndex = orientIndex(boardIndex, whiteToMove);
+            buffer[FeatureSpec.index(FeatureSpec.OWN_MOBILITY, tensorIndex)] = ownMobility[boardIndex];
+            buffer[FeatureSpec.index(FeatureSpec.ENEMY_MOBILITY, tensorIndex)] = enemyMobility[boardIndex];
+          }
+
         return;
       }
 
-    private static void writeDefendedAndUndefended(GameState gs, FeatureScratch scratch, float[] buffer)
+    private static void writeDefended(GameState gs, FeatureScratch scratch, float[] buffer)
       {
+        int boardIndex, tensorIndex;
+        boolean whiteDefended, blackDefended;
+        float ownValue, enemyValue;
+        boolean whiteToMove = gs.isWhiteToMove();
+
+        for(boardIndex = 0; boardIndex < FeatureSpec.SQUARES; boardIndex++)
+          {
+            if(gs.oob(boardIndex))
+              continue;
+
+            whiteDefended = gs.isWhite(boardIndex) && scratch.whiteAttackCounts[boardIndex] > 0;
+            blackDefended = gs.isBlack(boardIndex) && scratch.blackAttackCounts[boardIndex] > 0;
+
+            ownValue = whiteToMove ? (whiteDefended ? 1.0f : 0.0f) : (blackDefended ? 1.0f : 0.0f);
+            enemyValue = whiteToMove ? (blackDefended ? 1.0f : 0.0f) : (whiteDefended ? 1.0f : 0.0f);
+
+            tensorIndex = orientIndex(boardIndex, whiteToMove);
+            buffer[FeatureSpec.index(FeatureSpec.OWN_DEFENDED, tensorIndex)] = ownValue;
+            buffer[FeatureSpec.index(FeatureSpec.ENEMY_DEFENDED, tensorIndex)] = enemyValue;
+          }
+
         return;
       }
 
-    private static void writeRuleState(GameState gs, float[] buffer)
+    private static void writeUndefendedAndAttacked(GameState gs, FeatureScratch scratch, float[] buffer)
       {
+        int boardIndex, tensorIndex;
+        boolean whiteToMove = gs.isWhiteToMove();
+        boolean whiteUndefendedAndAttacked, blackUndefendedAndAttacked;
+        float ownValue, enemyValue;
+
+        for(boardIndex = 0; boardIndex < FeatureSpec.SQUARES; boardIndex++)
+          {
+            if(gs.oob(boardIndex))
+              continue;
+                                                                    //  Exclude kings because other planes already encode their danger.
+            whiteUndefendedAndAttacked = gs.isWhite(boardIndex) && !gs.isKing(boardIndex) &&
+                                         scratch.blackAttackCounts[boardIndex] > 0 && scratch.whiteAttackCounts[boardIndex] == 0;
+            blackUndefendedAndAttacked = gs.isBlack(boardIndex) && !gs.isKing(boardIndex) &&
+                                         scratch.whiteAttackCounts[boardIndex] > 0 && scratch.blackAttackCounts[boardIndex] == 0;
+
+
+            if(whiteToMove)
+              {
+                ownValue = whiteUndefendedAndAttacked ? 1.0f : 0.0f;
+                enemyValue = blackUndefendedAndAttacked ? 1.0f : 0.0f;
+              }
+            else
+              {
+                ownValue = blackUndefendedAndAttacked ? 1.0f : 0.0f;
+                enemyValue = whiteUndefendedAndAttacked ? 1.0f : 0.0f;
+              }
+
+            tensorIndex = orientIndex(boardIndex, whiteToMove);
+            buffer[FeatureSpec.index(FeatureSpec.OWN_UNDEFENDED_ATTACKED, tensorIndex)] = ownValue;
+            buffer[FeatureSpec.index(FeatureSpec.ENEMY_UNDEFENDED_ATTACKED, tensorIndex)] = enemyValue;
+          }
+
+        return;
+      }
+
+    private static void writeStates(GameState gs, FeatureScratch scratch, float[] buffer)
+      {
+        boolean whiteToMove = gs.isWhiteToMove();
+
+        float ownKingside = whiteToMove ? (gs.hasWhiteKingsideLiberty() ? 1.0f : 0.0f) : (gs.hasBlackKingsideLiberty() ? 1.0f : 0.0f);
+        float ownQueenside = whiteToMove ? (gs.hasWhiteQueensideLiberty() ? 1.0f : 0.0f) : (gs.hasBlackQueensideLiberty() ? 1.0f : 0.0f);
+
+        float enemyKingside = whiteToMove ? (gs.hasBlackKingsideLiberty() ? 1.0f : 0.0f) : (gs.hasWhiteKingsideLiberty() ? 1.0f : 0.0f);
+        float enemyQueenside = whiteToMove ? (gs.hasBlackQueensideLiberty() ? 1.0f : 0.0f) : (gs.hasWhiteQueensideLiberty() ? 1.0f : 0.0f);
+
+        float moveCounter = gs.getMoveCounter() / 255.0f;
+        int checkerCount = whiteToMove ? scratch.whiteKingCheckerCount : scratch.blackKingCheckerCount;
+        int boardIndex, tensorIndex;
+
+        for(boardIndex = 0; boardIndex < FeatureSpec.SQUARES; boardIndex++)
+          {
+            if(gs.oob(boardIndex))
+              continue;
+
+            tensorIndex = orientIndex(boardIndex, whiteToMove);
+            buffer[FeatureSpec.index(FeatureSpec.OWN_CASTLE_KINGSIDE, tensorIndex)] = ownKingside;
+            buffer[FeatureSpec.index(FeatureSpec.OWN_CASTLE_QUEENSIDE, tensorIndex)] = ownQueenside;
+
+            buffer[FeatureSpec.index(FeatureSpec.ENEMY_CASTLE_KINGSIDE, tensorIndex)] = enemyKingside;
+            buffer[FeatureSpec.index(FeatureSpec.ENEMY_CASTLE_QUEENSIDE, tensorIndex)] = enemyQueenside;
+
+            buffer[FeatureSpec.index(FeatureSpec.MOVE_COUNTER, tensorIndex)] = moveCounter;
+            buffer[FeatureSpec.index(FeatureSpec.CHECKER_COUNT, tensorIndex)] = checkerCount;
+          }
+
+        writeEnPassant(gs, buffer);
+        return;
+      }
+
+    private static void writeEnPassant(GameState gs, float[] buffer)
+      {
+        boolean whiteToMove = gs.isWhiteToMove();
+        Move[] moves = new Move[GameState._MAX_NUM_TARGETS];
+        int src, len, i;
+        int tensorIndex;
+
+        for(src = 0; src < FeatureSpec.SQUARES; src++)
+          {
+            if(gs.oob(src) || !gs.isPawn(src) || (whiteToMove ? !gs.isWhite(src) : !gs.isBlack(src)))
+              continue;
+
+            len = gs.getPawnMoves(src, moves);
+
+            for(i = 0; i < len; i++)
+              {
+                if(!gs.isEnPassantAttack(moves[i]))
+                  continue;
+
+                tensorIndex = orientIndex(moves[i].to, whiteToMove);
+                buffer[FeatureSpec.index(FeatureSpec.EN_PASSANT, tensorIndex)] = 1.0f;
+              }
+          }
+
         return;
       }
 

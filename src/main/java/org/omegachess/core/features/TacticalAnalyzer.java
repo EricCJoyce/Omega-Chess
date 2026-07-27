@@ -82,6 +82,8 @@ public final class TacticalAnalyzer
 
     private static void analyzePawn(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
+        int len;
+
         if(white)
           {
             markAttack(gs, index, gs.ul(index), true, FeatureSpec.PIECE_PAWN, scratch);
@@ -92,11 +94,17 @@ public final class TacticalAnalyzer
             markAttack(gs, index, gs.dl(index), false, FeatureSpec.PIECE_PAWN, scratch);
             markAttack(gs, index, gs.dr(index), false, FeatureSpec.PIECE_PAWN, scratch);
           }
+
+        len = gs.getPawnMoves(index, scratch.mobilityMoveBuffer);
+        markMobility(index, countDistinctPawnDestinations(gs, scratch.mobilityMoveBuffer, len, scratch), white, scratch);
+
         return;
       }
 
     private static void analyzeKnight(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
+        int len;
+
         markAttack(gs, index, gs.ul(gs.u(index)), white, FeatureSpec.PIECE_KNIGHT, scratch);
         markAttack(gs, index, gs.ur(gs.u(index)), white, FeatureSpec.PIECE_KNIGHT, scratch);
 
@@ -109,11 +117,16 @@ public final class TacticalAnalyzer
         markAttack(gs, index, gs.dr(gs.r(index)), white, FeatureSpec.PIECE_KNIGHT, scratch);
         markAttack(gs, index, gs.dl(gs.l(index)), white, FeatureSpec.PIECE_KNIGHT, scratch);
 
+        len = gs.getKnightMoves(index, scratch.mobilityMoveBuffer);
+        markMobility(index, len, white, scratch);
+
         return;
       }
 
     private static void analyzeChampion(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
+        int len;
+
         markAttack(gs, index, gs.u(index), white, FeatureSpec.PIECE_CHAMPION, scratch);
         markAttack(gs, index, gs.u(gs.u(index)), white, FeatureSpec.PIECE_CHAMPION, scratch);
 
@@ -131,11 +144,16 @@ public final class TacticalAnalyzer
         markAttack(gs, index, gs.dr(gs.dr(index)), white, FeatureSpec.PIECE_CHAMPION, scratch);
         markAttack(gs, index, gs.dl(gs.dl(index)), white, FeatureSpec.PIECE_CHAMPION, scratch);
 
+        len = gs.getChampionMoves(index, scratch.mobilityMoveBuffer);
+        markMobility(index, len, white, scratch);
+
         return;
       }
 
     private static void analyzeWizard(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
+        int len;
+
         markAttack(gs, index, gs.ul(index), white, FeatureSpec.PIECE_WIZARD, scratch);
         markAttack(gs, index, gs.ur(index), white, FeatureSpec.PIECE_WIZARD, scratch);
         markAttack(gs, index, gs.dr(index), white, FeatureSpec.PIECE_WIZARD, scratch);
@@ -153,11 +171,15 @@ public final class TacticalAnalyzer
         markAttack(gs, index, gs.l(gs.l(gs.dl(index))), white, FeatureSpec.PIECE_WIZARD, scratch);
         markAttack(gs, index, gs.r(gs.r(gs.dr(index))), white, FeatureSpec.PIECE_WIZARD, scratch);
 
+        len = gs.getWizardMoves(index, scratch.mobilityMoveBuffer);
+        markMobility(index, len, white, scratch);
+
         return;
       }
 
     private static void analyzeBishop(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
+        int len;
         int dst;
         boolean behindFirstBlocker;
 
@@ -233,12 +255,16 @@ public final class TacticalAnalyzer
               }
             dst = gs.dl(dst);
           }
+
+        len = gs.getBishopMoves(index, scratch.mobilityMoveBuffer);
+        markMobility(index, len, white, scratch);
 
         return;
       }
 
     private static void analyzeRook(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
+        int len;
         int dst;
         boolean behindFirstBlocker;
 
@@ -315,11 +341,15 @@ public final class TacticalAnalyzer
             dst = gs.l(dst);
           }
 
+        len = gs.getRookMoves(index, scratch.mobilityMoveBuffer);
+        markMobility(index, len, white, scratch);
+
         return;
       }
 
     private static void analyzeQueen(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
+        int len;
         int dst;
         boolean behindFirstBlocker;
 
@@ -467,6 +497,9 @@ public final class TacticalAnalyzer
               }
             dst = gs.dl(dst);
           }
+
+        len = gs.getQueenMoves(index, scratch.mobilityMoveBuffer);
+        markMobility(index, len, white, scratch);
 
         return;
       }
@@ -474,6 +507,7 @@ public final class TacticalAnalyzer
     private static void analyzeKing(GameState gs, int index, boolean white, FeatureScratch scratch)
       {
         int src, dst, candidate;
+                                                                    //  Point to white or black buffer.
         byte[] pinRays = white ? scratch.whitePinRays : scratch.blackPinRays;
         Move[] moves = scratch.kingMoveBuffer;
         GameState tmp = scratch.temporaryState;
@@ -707,6 +741,10 @@ public final class TacticalAnalyzer
         if(!gs.oob(gs.ul(index)))
           markZone(gs.ul(index), white, scratch);
 
+        //////////////////////////////////////////////////////////////  Determine king mobility.
+        len = gs.getKingNonCastle(index, scratch.mobilityMoveBuffer);
+        markMobility(index, len, white, scratch);
+
         return;
       }
 
@@ -714,7 +752,7 @@ public final class TacticalAnalyzer
       {
         if(gs.oob(destination))
           return;
-
+                                                                    //  Point to white or black buffer.
         byte[] pieceAttacks = white ? scratch.whitePieceAttacks : scratch.blackPieceAttacks;
         int[] attackCounts = white ? scratch.whiteAttackCounts : scratch.blackAttackCounts;
         int attackIndex = FeatureScratch.attackIndex(pieceType, destination);
@@ -742,6 +780,7 @@ public final class TacticalAnalyzer
 
     private static void markXray(int destination, boolean white, int xrayType, FeatureScratch scratch)
       {
+                                                                    //  Point to white or black buffer.
         byte[] pieceXrays = white ? scratch.whitePieceXrays : scratch.blackPieceXrays;
         pieceXrays[FeatureScratch.pieceXrayIndex(xrayType, destination)] = 1;
         return;
@@ -749,6 +788,7 @@ public final class TacticalAnalyzer
 
     private static void markPinned(int pinnedSquare, boolean whitePinnedSide, FeatureScratch scratch)
       {
+                                                                    //  Point to white or black buffer.
         byte[] pinned = whitePinnedSide ? scratch.whitePinned : scratch.blackPinned;
         pinned[pinnedSquare] = 1;
         return;
@@ -756,6 +796,7 @@ public final class TacticalAnalyzer
 
     private static void markChecker(int checker, boolean whiteKingChecked, FeatureScratch scratch)
       {
+                                                                    //  Point to white or black buffer.
         byte[] checkers = whiteKingChecked ? scratch.whiteKingCheckers : scratch.blackKingCheckers;
 
         if(checkers[checker] != 0)
@@ -773,6 +814,7 @@ public final class TacticalAnalyzer
 
     private static void markEscape(int escape, boolean whiteKing, FeatureScratch scratch)
       {
+                                                                    //  Point to white or black buffer.
         byte[] escapes = whiteKing ? scratch.whiteKingEscapes : scratch.blackKingEscapes;
         escapes[escape] = 1;
         return;
@@ -780,6 +822,7 @@ public final class TacticalAnalyzer
 
     private static void markZone(int index, boolean whiteKing, FeatureScratch scratch)
       {
+                                                                    //  Point to white or black buffer.
         byte[] zone = whiteKing ? scratch.whiteKingZone : scratch.blackKingZone;
         zone[index] = 1;
         return;
@@ -801,6 +844,7 @@ public final class TacticalAnalyzer
 
     private static void markPressure(int index, boolean whiteKing, FeatureScratch scratch)
       {
+                                                                    //  Point to white or black buffer.
         int[] pressure = whiteKing ? scratch.whiteKingPressure : scratch.blackKingPressure;
                                                                     //  Note that these are SWAPPED:
                                                                     //  White cares about black's attacks.
@@ -808,6 +852,35 @@ public final class TacticalAnalyzer
         int[] attackCount = whiteKing ? scratch.blackAttackCounts : scratch.whiteAttackCounts;
         pressure[index] = attackCount[index];
         return;
+      }
+
+    private static void markMobility(int index, int count, boolean white, FeatureScratch scratch)
+      {
+                                                                    //  Point to white or black buffer.
+        int[] mobility = white ? scratch.whiteMobility : scratch.blackMobility;
+        mobility[index] = count;
+        return;
+      }
+
+    private static int countDistinctPawnDestinations(GameState gs, Move[] moves, int len, FeatureScratch scratch)
+      {
+        int count = 0;
+
+        scratch.clearDestinationSeen();
+
+        for(int i = 0; i < len; i++)
+          {
+            Move move = moves[i];
+            if(gs.isEnPassantAttack(move))                          //  En passant has its own feature plane.
+              continue;
+            if(!scratch.destinationSeen[move.to])
+              {
+                scratch.destinationSeen[move.to] = true;
+                count++;
+              }
+          }
+
+        return count;
       }
 
     private static int pieceTypeIndex(GameState gs, int index)

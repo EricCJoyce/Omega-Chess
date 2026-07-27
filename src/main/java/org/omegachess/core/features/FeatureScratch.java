@@ -43,6 +43,10 @@ public final class FeatureScratch
     public final int[] whiteKingPressure = new int[FeatureSpec.SQUARES];
     public final int[] blackKingPressure = new int[FeatureSpec.SQUARES];
 
+    public final int[] whiteMobility = new int[FeatureSpec.SQUARES];
+    public final int[] blackMobility = new int[FeatureSpec.SQUARES];
+    public final Move[] mobilityMoveBuffer = new Move[GameState._MAX_NUM_TARGETS];
+
     public void clear()
       {
         Arrays.fill(whitePieceAttacks, (byte)0);
@@ -63,6 +67,8 @@ public final class FeatureScratch
         Arrays.fill(blackKingZone, (byte)0);
         Arrays.fill(whiteKingPressure, 0);
         Arrays.fill(blackKingPressure, 0);
+        Arrays.fill(whiteMobility, 0);
+        Arrays.fill(blackMobility, 0);
 
         return;
       }
