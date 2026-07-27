@@ -2127,7 +2127,7 @@ public final class GameState
     /*  Return the index UP from the given i. */
     public int u(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i + 12) == row(i) + 1)
               return i + 12;
@@ -2138,7 +2138,7 @@ public final class GameState
     /*  Return the index DOWN from the given i. */
     public int d(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i - 12) == row(i) - 1 && row(i) != _NONE)
               return i - 12;
@@ -2149,7 +2149,7 @@ public final class GameState
     /*  Return the index LEFT from the given i. */
     public int l(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i - 1) == row(i))
               return i - 1;
@@ -2160,7 +2160,7 @@ public final class GameState
     /*  Return the index RIGHT from the given i. */
     public int r(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i + 1) == row(i))
               return i + 1;
@@ -2171,7 +2171,7 @@ public final class GameState
     /*  Return the index UP-LEFT from the given i. */
     public int ul(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i + 11) == row(i) + 1)
               return i + 11;
@@ -2182,7 +2182,7 @@ public final class GameState
     /*  Return the index UP-RIGHT from the given i. */
     public int ur(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i + 13) == row(i) + 1)
               return i + 13;
@@ -2193,7 +2193,7 @@ public final class GameState
     /*  Return the index DOWN-LEFT from the given i. */
     public int dl(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i - 13) == row(i) - 1 && row(i) != _NONE)
               return i - 13;
@@ -2204,7 +2204,7 @@ public final class GameState
     /*  Return the index DOWN-RIGHT from the given i. */
     public int dr(int i)
       {
-        if(!oob(i))
+        if(i >= 0 && i < _NONE)
           {
             if(row(i - 11) == row(i) - 1 && row(i) != _NONE)
               return i - 11;
@@ -2213,7 +2213,7 @@ public final class GameState
       }
 
     /*  Compute the COLUMN in which given index is included. */
-    public int col(int i)
+    public static int col(int i)
       {
         if(i >= 0 && i < _NONE)
           return i % 12;
@@ -2221,7 +2221,7 @@ public final class GameState
       }
 
     /*  Compute the ROW in which given index is included. */
-    public int row(int i)
+    public static int row(int i)
       {
         if(i >= 0 && i < _NONE)
           return (i - (i % 12)) / 12;
@@ -2229,7 +2229,7 @@ public final class GameState
       }
 
     /* Is the given index out of bounds or == _NONE? */
-    public boolean oob(int i)
+    public static boolean oob(int i)
       {
         if(i >= 0 && i < _NONE)
           {
