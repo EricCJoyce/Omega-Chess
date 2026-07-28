@@ -90,15 +90,15 @@ target/
  |              +---cli/
  |              |    +---GameLogicCli.class
  |              +---core/
- |              |    +---features/
- |              |    |    +---FeatureEncoding.class
- |              |    |    +---FeatureScratch.class
- |              |    |    +---FeatureSpec.class
- |              |    |    +---TacticalAnalyzer.class
  |              |    +---GameEncoding.class
  |              |    +---GameLogic.class
  |              |    +---GameState.class
  |              |    +---Move.class
+ |              |    +---features/
+ |              |         +---FeatureEncoding.class
+ |              |         +---FeatureScratch.class
+ |              |         +---FeatureSpec.class
+ |              |         +---TacticalAnalyzer.class
  |              +---eval/
  |              |    +---HeuristicEvaluator.class
  |              |    +---PaganEvaluationWasm.class
@@ -110,8 +110,7 @@ target/
  |                   +---GameLogicWasm.class
  +---generated/
  |    +---wasm/
- |         +---gamelogic-wasm-runtime.js
- |         +---eval-wasm-runtime.js
+ |         +---teavm-wasm-runtime.js
  |         +---teavm/
  |              +---gamelogic.wasm
  |              +---eval.wasm
