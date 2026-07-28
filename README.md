@@ -75,23 +75,13 @@ which is the one of four moves on file for this state.
 | _WHITE_TO_MOVE | 0 | Indication that white is to move in the current game state |
 | _BLACK_TO_MOVE | 1 | Indication that black is to move in the current game state |
 
-## Client-facing game logic module
-
-### Game-Logic Module
-
-![Game Logic Schema](Game_Logic_Schema.png)
-
-The **game-logic module** has *two* outward-facing buffers:
-- `currentState` is `_GAMESTATE_BYTE_SIZE` bytes long. It encodes the current state of the game.
-- `movesBuffer` is `_MAX_NUM_TARGETS` bytes long.
-
-Compile the front-end, client-facing game-logic module. This WebAssembly module answers queries from the client-side like getting data about which pieces can move where.
+## Compilation
+This single call from the directory containing `src` produces everything we'll need for this project.
 ```
 sudo docker run --rm -v "$PWD":/project -v "$HOME/.m2":/root/.m2 java-wasm clean package
 ```
 
-This single call produces everything we'll need for this project.
-
+Next to `src`, you should see the following sub-tree:
 ```
 target/
  +---classes/
@@ -138,8 +128,18 @@ target/
  +---omega-chess-cli.jar
 ```
 
-![Negamax Schema](Negamax_Engine_Schema.png)
+## Client-facing game logic module
+This WebAssembly module stores the current state of the game in progress and answers queries from the client-side such as which pieces can move where.
 
+### Game-Logic Module
+
+![Game Logic Schema](Game_Logic_Schema.png)
+
+The **game-logic module** has *two* outward-facing buffers:
+- `currentState` is `_GAMESTATE_BYTE_SIZE` bytes long. It encodes the current state of the game.
+- `movesBuffer` is `_MAX_NUM_TARGETS` bytes long.
+
+![Negamax Schema](Negamax_Engine_Schema.png)
 
 ## Citation
 If this code was helpful to you, please cite this repository.
