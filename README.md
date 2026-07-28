@@ -97,18 +97,34 @@ target/
  +---classes/
  |    +---org/
  |         +---omegachess/
+ |              +---cli/
+ |              |    +---GameLogicCli.class
  |              +---core/
+ |              |    +---features/
+ |              |    |    +---FeatureEncoding.class
+ |              |    |    +---FeatureScratch.class
+ |              |    |    +---FeatureSpec.class
+ |              |    |    +---TacticalAnalyzer.class
  |              |    +---GameEncoding.class
  |              |    +---GameLogic.class
  |              |    +---GameState.class
  |              |    +---Move.class
+ |              +---eval/
+ |              |    +---HeuristicEvaluator.class
+ |              |    +---PaganEvaluationWasm.class
+ |              |    +---PaganEvaluator.class
+ |              |    +---PaganNetwork.class
+ |              |    +---PaganSpec.class
+ |              |    +---PaganWeights.class
  |              +---wasm/
  |                   +---GameLogicWasm.class
  +---generated/
  |    +---wasm/
- |         +---classes.wasm-runtime.js
+ |         +---gamelogic-wasm-runtime.js
+ |         +---eval-wasm-runtime.js
  |         +---teavm/
  |              +---gamelogic.wasm
+ |              +---eval.wasm
  +---generated-sources/
  |    +---annotations/
  +---maven-archiver/
@@ -119,7 +135,7 @@ target/
  |              +---default-compile/
  |                   +---createdFiles.lst
  |                   +---inputFiles.lst
- +---omega-chess-wasm-1.0.0-SNAPSHOT.jar
+ +---omega-chess-cli.jar
 ```
 
 ![Negamax Schema](Negamax_Engine_Schema.png)
