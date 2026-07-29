@@ -397,27 +397,63 @@ public final class GameState
       }
 
     /* Does the given move describe a kingside castle by white on the current board? */
+    public boolean isWhiteKingside(int from, int to)
+      {
+        Move move = new Move(from, to, _NO_PROMO);
+        return isWhiteKingside(move);
+      }
+
     public boolean isWhiteKingside(Move move)
       {
         return (isWhite(move.from) && isKing(move.from) && move.from == 18 && move.to == 20);
       }
 
     /* Does the given move describe a queenside castle by white on the current board? */
+    public boolean isWhiteQueenside(int from, int to)
+      {
+        Move move = new Move(from, to, _NO_PROMO);
+        return isWhiteQueenside(move);
+      }
+
     public boolean isWhiteQueenside(Move move)
       {
         return (isWhite(move.from) && isKing(move.from) && move.from == 18 && move.to == 16);
       }
 
     /* Does the given move describe a kingside castle by black on the current board? */
+    public boolean isBlackKingside(int from, int to)
+      {
+        Move move = new Move(from, to, _NO_PROMO);
+        return isBlackKingside(move);
+      }
+
     public boolean isBlackKingside(Move move)
       {
         return (isBlack(move.from) && isKing(move.from) && move.from == 126 && move.to == 128);
       }
 
     /* Does the given move describe a queenside castle by black on the current board? */
+    public boolean isBlackQueenside(int from, int to)
+      {
+        Move move = new Move(from, to, _NO_PROMO);
+        return isBlackQueenside(move);
+      }
+
     public boolean isBlackQueenside(Move move)
       {
         return (isBlack(move.from) && isKing(move.from) && move.from == 126 && move.to == 124);
+      }
+
+    /* Does the given move describe a capture (including en passant) on the current board? */
+    public boolean isCapture(int from, int to)
+      {
+        Move move = new Move(from, to, _NO_PROMO);
+        return isCapture(move);
+      }
+
+    public boolean isCapture(Move move)
+      {
+        return (!isEmpty(move.to) || isEnPassantAttack(move));
       }
 
     /* Return the column in [1, 10] or _NONE in which the previous pawn-special move occurred. */
@@ -450,7 +486,7 @@ public final class GameState
         return enPassantVictim(move.from, move.to);
       }
 
-    private int enPassantVictim(int from, int to)
+    public int enPassantVictim(int from, int to)
       {
         int advance = previousPawnAdvance();
         boolean capturingWhite, destinationWasPassed;
@@ -517,6 +553,12 @@ public final class GameState
       }
 
     /* Does the given move describe an en-passant capture on the current board? */
+    public boolean isEnPassantAttack(int from, int to)
+      {
+        Move move = new Move(from, to, _NO_PROMO);
+        return enPassantVictim(move) != _NONE;
+      }
+
     public boolean isEnPassantAttack(Move move)
       {
         return enPassantVictim(move) != _NONE;
