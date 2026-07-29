@@ -16,20 +16,31 @@ public final class PaganNetwork
     private final float[] workB = new float[PaganSpec.ACTIVATION_FLOATS];
     private final float[] hidden = new float[PaganSpec.HIDDEN_UNITS];
 
-    public float evaluate(float[] input)
+    //  Return the raw final affine value, before tanh. This is the value that PaganEvaluator combines with optional hand-written heuristic logits.
+    public float forwardLogit(float[] input)
       {
         int block;
 
-        if(input == null || input.length != PaganSpec.INPUT_FLOATS)
-          throw new IllegalArgumentException("Pagan input must contain exactly " + PaganSpec.INPUT_FLOATS + " floats");
-
+        requireInput(input);
         stem(input, activation);
-
         for(block = 0; block < PaganSpec.RESIDUAL_BLOCKS; block++)
           residualBlock(block);
 
         hiddenLayer();
-        return valueHead();
+        return valueHeadLogit();
+      }
+
+    /** Pure-network bounded value, useful for diagnostics and JVM tests. */
+    public float evaluate(float[] input)
+      {
+        return (float)Math.tanh(forwardLogit(input));
+      }
+
+    private static void requireInput(float[] input)
+      {
+        if(input == null || input.length != PaganSpec.INPUT_FLOATS)
+          throw new IllegalArgumentException("Pagan input must contain exactly " + PaganSpec.INPUT_FLOATS + " floats");
+        return;
       }
 
     private void stem(float[] input, float[] output)
@@ -167,7 +178,7 @@ public final class PaganNetwork
         return;
       }
 
-    private float valueHead()
+    private float valueHeadLogit()
       {
         int i;
         float sum = PaganWeights.VALUE_BIAS[0];

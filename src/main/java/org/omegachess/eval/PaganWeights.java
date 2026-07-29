@@ -139,6 +139,51 @@ public final class PaganWeights
         return;
       }
 
+    public static void validateFinite()
+      {
+        requireFinite(STEM_WEIGHT, "stem.weight");
+        requireFinite(STEM_BIAS, "stem.bias");
+        requireFinite(DEPTHWISE1_WEIGHT, "depthwise1.weight");
+        requireFinite(DEPTHWISE1_BIAS, "depthwise1.bias");
+        requireFinite(POINTWISE1_WEIGHT, "pointwise1.weight");
+        requireFinite(POINTWISE1_BIAS, "pointwise1.bias");
+        requireFinite(DEPTHWISE2_WEIGHT, "depthwise2.weight");
+        requireFinite(DEPTHWISE2_BIAS, "depthwise2.bias");
+        requireFinite(POINTWISE2_WEIGHT, "pointwise2.weight");
+        requireFinite(POINTWISE2_BIAS, "pointwise2.bias");
+        requireFinite(HIDDEN_WEIGHT, "hidden.weight");
+        requireFinite(HIDDEN_BIAS, "hidden.bias");
+        requireFinite(VALUE_WEIGHT, "value_head.weight");
+        requireFinite(VALUE_BIAS, "value_head.bias");
+        return;
+      }
+
+    private static void requireExactRemaining(FloatBuffer buffer, String name)
+      {
+        if(buffer == null)
+          throw new IllegalArgumentException(name + " cannot be null");
+
+        if(buffer.remaining() != PaganSpec.PARAMETER_FLOATS)
+          throw new IllegalArgumentException("Expected " + PaganSpec.PARAMETER_FLOATS + " packed floats in " + name + ", found " + buffer.remaining());
+
+        return;
+      }
+
+    private static void requireFinite(float[] values, String name)
+      {
+        int i;
+        float value;
+
+        for(i = 0; i < values.length; i++)
+          {
+            value = values[i];
+            if(Float.isNaN(value) || Float.isInfinite(value))
+              throw new IllegalArgumentException("Non-finite Pagan parameter in " + name + " at index " + i);
+          }
+
+        return;
+      }
+
     private static void getBlockDepthwise(FloatBuffer source, float[] destination, int block)
       {
         int count = PaganSpec.CHANNELS * 3 * 3;

@@ -11,14 +11,42 @@ public final class PaganEvaluator
     private final float[] features = new float[PaganSpec.INPUT_FLOATS];
     private final FeatureScratch featureScratch = new FeatureScratch();
     private final PaganNetwork network = new PaganNetwork();
+    private final HeuristicEvaluator heuristicEvaluator = new HeuristicEvaluator();
 
-    public float evaluate(GameState state)
+    private float lastNetworkLogit;
+    private float lastHeuristicLogit;
+    private float lastValue;
+
+    public float evaluate(GameState gs)
       {
-        if(state == null)
-          throw new IllegalArgumentException("state cannot be null");
+        if(gs == null)
+          throw new IllegalArgumentException("GameState argument cannot be null");
 
-        FeatureEncoding.encode(state, features, featureScratch);
-        return network.evaluate(features);
+        FeatureEncoding.encode(gs, features, featureScratch);
+
+        lastNetworkLogit = network.forwardLogit(features);
+        lastHeuristicLogit = heuristicEvaluator.evaluate(gs, featureScratch);
+        lastValue = (float) Math.tanh(lastNetworkLogit + lastHeuristicLogit);
+
+        return lastValue;
+      }
+
+    //  Diagnostic access only; valid after evaluate().
+    public float lastNetworkLogit()
+      {
+        return lastNetworkLogit;
+      }
+
+    //  Diagnostic access only; valid after evaluate().
+    public float lastHeuristicLogit()
+      {
+        return lastHeuristicLogit;
+      }
+
+    //  Diagnostic access only; valid after evaluate().
+    public float lastValue()
+      {
+        return lastValue;
       }
 
     //  Diagnostic access only; do not mutate during evaluation.

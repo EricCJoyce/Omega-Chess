@@ -51,6 +51,7 @@ public final class PaganSpec
                                                             HIDDEN_BIAS_FLOATS +
                                                             VALUE_WEIGHT_FLOATS +
                                                             VALUE_BIAS_FLOATS;
+    public static final int PARAMETER_BYTES               = PARAMETER_FLOATS * Float.BYTES;
 
     private PaganSpec()
       {
