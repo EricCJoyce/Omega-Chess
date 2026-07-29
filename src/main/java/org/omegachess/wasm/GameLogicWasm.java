@@ -180,6 +180,48 @@ public final class GameLogicWasm
       }
 
     @JSExport
+    public static boolean isWhiteKingsideCastle_client(int from, int to)
+      {
+        return CURRENT_STATE.isWhiteKingside(from, to);
+      }
+
+    @JSExport
+    public static boolean isWhiteQueensideCastle_client(int from, int to)
+      {
+        return CURRENT_STATE.isWhiteQueenside(from, to);
+      }
+
+    @JSExport
+    public static boolean isBlackKingsideCastle_client(int from, int to)
+      {
+        return CURRENT_STATE.isBlackKingside(from, to);
+      }
+
+    @JSExport
+    public static boolean isBlackQueensideCastle_client(int from, int to)
+      {
+        return CURRENT_STATE.isBlackQueenside(from, to);
+      }
+
+    @JSExport
+    public static boolean isEnPassantAttack_client(int from, int to)
+      {
+        return CURRENT_STATE.isEnPassantAttack(from, to);
+      }
+
+    @JSExport
+    public static int enPassantVictim_client(int from, int to)
+      {
+        return CURRENT_STATE.enPassantVictim(from, to);
+      }
+
+    @JSExport
+    public static int row_client(int index)
+      {
+        return CURRENT_STATE.row(index);
+      }
+
+    @JSExport
     public static int getMovesIndex_client(int index)
       {
         int i;
