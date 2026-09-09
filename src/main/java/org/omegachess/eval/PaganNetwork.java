@@ -6,7 +6,10 @@ package org.omegachess.eval;
      four depthwise-separable residual blocks
      flatten(CHW)
      ReLU(hidden dense)
-     tanh(value head)
+     linear value head
+
+   forwardLogit() returns the raw neural-network logit.
+   PaganEvaluator combines this with the fixed heuristic logit before applying the final tanh.
 
    One PaganNetwork instance is intentionally not thread-safe or reentrant. */
 public final class PaganNetwork
@@ -16,7 +19,7 @@ public final class PaganNetwork
     private final float[] workB = new float[PaganSpec.ACTIVATION_FLOATS];
     private final float[] hidden = new float[PaganSpec.HIDDEN_UNITS];
 
-    //  Return the raw final affine value, before tanh. This is the value that PaganEvaluator combines with optional hand-written heuristic logits.
+    //  Return the raw final affine value. This is the value that PaganEvaluator combines with optional hand-written heuristic logits.
     public float forwardLogit(float[] input)
       {
         int block;
@@ -28,12 +31,6 @@ public final class PaganNetwork
 
         hiddenLayer();
         return valueHeadLogit();
-      }
-
-    /** Pure-network bounded value, useful for diagnostics and JVM tests. */
-    public float evaluate(float[] input)
-      {
-        return (float)Math.tanh(forwardLogit(input));
       }
 
     private static void requireInput(float[] input)
@@ -186,7 +183,7 @@ public final class PaganNetwork
         for(i = 0; i < PaganSpec.HIDDEN_UNITS; i++)
           sum += hidden[i] * PaganWeights.VALUE_WEIGHT[i];
 
-        return (float) Math.tanh(sum);
+        return sum;
       }
 
     private static float relu(float value)

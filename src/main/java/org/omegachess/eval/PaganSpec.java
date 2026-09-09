@@ -53,6 +53,24 @@ public final class PaganSpec
                                                             VALUE_BIAS_FLOATS;
     public static final int PARAMETER_BYTES               = PARAMETER_FLOATS * Float.BYTES;
 
+    public static final int MATERIAL_PAWN                 = 10;
+    public static final int MATERIAL_KNIGHT               = 20;
+    public static final int MATERIAL_CHAMPION             = 39;
+    public static final int MATERIAL_WIZARD               = 38;
+    public static final int MATERIAL_BISHOP               = 40;
+    public static final int MATERIAL_ROOK                 = 60;
+    public static final int MATERIAL_QUEEN                = 120;
+    public static final int SEE_KING                      = 1000;
+
+    public static final float KING_PRESSURE_WEIGHT        = 1.0f;
+    public static final float KING_CHECK_WEIGHT           = 4.0f;
+    public static final float KING_ESCAPE_WEIGHT          = 1.0f;
+
+    public static final float[] PASSED_PAWN_BONUS         = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 7.0f, 11.0f, 16.0f};
+    public static final float PAWN_DOUBLED                = 2.0f;
+    public static final float PAWN_ISOLATED               = 2.0f;
+    public static final float PAWN_CONNECTED              = 1.0f;
+
     private PaganSpec()
       {
       }

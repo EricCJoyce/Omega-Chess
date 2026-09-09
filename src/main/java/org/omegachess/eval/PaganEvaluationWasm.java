@@ -17,38 +17,54 @@ import org.teavm.jso.JSExport;
    JavaScript writes encoded states and moves into direct buffers, calls an exported operation, and reads the corresponding output buffer. */
 public final class PaganEvaluationWasm
   {
-    private static final int MOVE_SCORE_BYTES               = Integer.BYTES;
-    private static final int MOVE_FLAGS_BYTES               = 1;
-    private static final int MOVE_RECORD_BYTES              = GameState._MOVE_BYTE_SIZE + MOVE_SCORE_BYTES + MOVE_FLAGS_BYTES;
+    private static final int MOVE_SCORE_BYTES                      = Integer.BYTES;
+    private static final int MOVE_FLAGS_BYTES                      = 1;
+    private static final int MOVE_RECORD_BYTES                     = GameState._MOVE_BYTE_SIZE + MOVE_SCORE_BYTES + MOVE_FLAGS_BYTES;
+                                                                    //  Bit zero means that a move is a capture or promotion.
+    private static final int MOVE_FLAG_NOISY                       = 0x01;
+    private static final int MOVE_SORTING_PROMOTION_BONUS          = 800;
+    private static final int MOVE_SORTING_CHECK_BONUS              = 50;
+                                                                    //  106
+    private static final int REPETITION_STATE_BYTES                = GameState._GAMESTATE_BYTE_SIZE - 1;
 
-    private static final int MOVE_FLAG_NOISY                = 0x01; //  Bit zero means that a move is a capture or promotion.
-    private static final int MOVE_SORTING_PROMOTION_BONUS   = 800;
-    private static final int MOVE_SORTING_CHECK_BONUS       = 50;
+    private static final int WHITE_CASTLED_MASK                    = 0x10;
+    private static final int BLACK_CASTLED_MASK                    = 0x02;
+    private static final int CASTLED_HISTORY_MASK                  = WHITE_CASTLED_MASK | BLACK_CASTLED_MASK;
+
+    private static final int PREVIOUS_PAWN_MOVE_INDEX              = 105;
+
+    private static final int HISTORY_OK                            = 0;
+    private static final int HISTORY_DRAW                          = 1;
+    private static final int MAX_STATE_REPETITION                  = 5;
                                                                     //  Array containing the encoded INPUT game state.
-    private static final ByteBuffer INPUT_GAMESTATE_BUFFER  = directByteBuffer(GameState._GAMESTATE_BYTE_SIZE);
+    private static final ByteBuffer INPUT_GAMESTATE_BUFFER         = directByteBuffer(GameState._GAMESTATE_BYTE_SIZE);
                                                                     //  Array containing the encoded INPUT move.
-    private static final ByteBuffer INPUT_MOVE_BUFFER       = directByteBuffer(GameState._MOVE_BYTE_SIZE);
+    private static final ByteBuffer INPUT_MOVE_BUFFER              = directByteBuffer(GameState._MOVE_BYTE_SIZE);
                                                                     //  Array containing the encoded OUTPUT game state.
-    private static final ByteBuffer OUTPUT_GAMESTATE_BUFFER = directByteBuffer(GameState._GAMESTATE_BYTE_SIZE);
+    private static final ByteBuffer OUTPUT_GAMESTATE_BUFFER        = directByteBuffer(GameState._GAMESTATE_BYTE_SIZE);
                                                                     //  Array containing up to _MAX_MOVES moves.
                                                                     //  Rather than encode the number of moves in the array itself, we return an integer.
                                                                     //  Each move is represented as a byte sub-array encoding:
                                                                     //    _MOVE_BYTE_SIZE  :  bytes encoding a single move,
                                                                     //    4                :  bytes for signed integer, which is rough score.
                                                                     //    1                :  byte (should be Boolean) indicating whether move is "quiet".
-    private static final ByteBuffer OUTPUT_MOVES_BUFFER     = directByteBuffer(GameState._MAX_MOVES * MOVE_RECORD_BYTES);
+    private static final ByteBuffer OUTPUT_MOVES_BUFFER            = directByteBuffer(GameState._MAX_MOVES * MOVE_RECORD_BYTES);
 
-    private static final FloatBuffer PACKED_WEIGHT_BUFFER   = ByteBuffer.allocateDirect(PaganSpec.PARAMETER_BYTES).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
+    private static final FloatBuffer PACKED_WEIGHT_BUFFER          = ByteBuffer.allocateDirect(PaganSpec.PARAMETER_BYTES).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
 
-    private static final byte[] INPUT_GAMESTATE_BYTES       = new byte[GameState._GAMESTATE_BYTE_SIZE];
-    private static final byte[] INPUT_MOVE_BYTES            = new byte[GameState._MOVE_BYTE_SIZE];
-    private static final byte[] OUTPUT_GAMESTATE_BYTES      = new byte[GameState._GAMESTATE_BYTE_SIZE];
+    private static final byte[] INPUT_GAMESTATE_BYTES              = new byte[GameState._GAMESTATE_BYTE_SIZE];
+    private static final byte[] INPUT_MOVE_BYTES                   = new byte[GameState._MOVE_BYTE_SIZE];
+    private static final byte[] OUTPUT_GAMESTATE_BYTES             = new byte[GameState._GAMESTATE_BYTE_SIZE];
 
-    private static final GameState GAMESTATE                = new GameState();
-    private static final GameState GAMESTATE_OUT            = new GameState();
-    private static final GameState MOVE_SORT_STATE          = new GameState();
-    private static final Move[] MOVES                       = new Move[GameState._MAX_MOVES];
-    private static final PaganEvaluator EVALUATOR           = new PaganEvaluator();
+    private static final ByteBuffer OUTPUT_REPETITION_STATE_BUFFER = directByteBuffer(REPETITION_STATE_BYTES);
+    private static final byte[] REPETITION_STATE_BYTES_BUFFER      = new byte[GameState._GAMESTATE_BYTE_SIZE];
+    private static final Move[] REPETITION_MOVES                   = new Move[GameState._MAX_MOVES];
+
+    private static final GameState GAMESTATE                       = new GameState();
+    private static final GameState GAMESTATE_OUT                   = new GameState();
+    private static final GameState MOVE_SORT_STATE                 = new GameState();
+    private static final Move[] MOVES                              = new Move[GameState._MAX_MOVES];
+    private static final PaganEvaluator EVALUATOR                  = new PaganEvaluator();
 
     private static boolean weightsCommitted;
 
@@ -67,7 +83,7 @@ public final class PaganEvaluationWasm
     @JSExport
     public static void bindBuffers()
       {
-        installBuffers(INPUT_GAMESTATE_BUFFER, INPUT_MOVE_BUFFER, OUTPUT_GAMESTATE_BUFFER, OUTPUT_MOVES_BUFFER, PACKED_WEIGHT_BUFFER);
+        installBuffers(INPUT_GAMESTATE_BUFFER, INPUT_MOVE_BUFFER, OUTPUT_GAMESTATE_BUFFER, OUTPUT_MOVES_BUFFER, OUTPUT_REPETITION_STATE_BUFFER, PACKED_WEIGHT_BUFFER);
         return;
       }
 
@@ -182,6 +198,50 @@ public final class PaganEvaluationWasm
         return EVALUATOR.evaluate(GAMESTATE);
       }
 
+    @JSExport
+    public static void repetitionState()
+      {
+        int moveCount, i;
+        boolean legalEnPassant = false;
+
+        decodeInputGameState();
+
+        GameEncoding.encodeState(GAMESTATE, REPETITION_STATE_BYTES_BUFFER);
+                                                                    //  "Has castled" is evaluator/history bookkeeping, not part of repetition identity.
+                                                                    //  Current castling RIGHTS remain.
+        REPETITION_STATE_BYTES_BUFFER[0] = (byte)((REPETITION_STATE_BYTES_BUFFER[0] & 0xFF) & ~CASTLED_HISTORY_MASK);
+                                                                    //  A previous double/triple pawn move affects repetition identity
+                                                                    //  only when the side to move has a legal en-passant capture.
+        if(GAMESTATE.getPreviousPawnMove() != 0)
+          {
+            moveCount = GAMESTATE.getMoves(REPETITION_MOVES);
+
+            for(i = 0; i < moveCount; i++)
+              {
+                if(GAMESTATE.isEnPassantAttack(REPETITION_MOVES[i]))
+                  {
+                    legalEnPassant = true;
+                    break;
+                  }
+              }
+          }
+
+        if(!legalEnPassant)
+          REPETITION_STATE_BYTES_BUFFER[PREVIOUS_PAWN_MOVE_INDEX] = 0;
+
+        OUTPUT_REPETITION_STATE_BUFFER.position(0);
+        OUTPUT_REPETITION_STATE_BUFFER.put(REPETITION_STATE_BYTES_BUFFER, 0, REPETITION_STATE_BYTES);
+        OUTPUT_REPETITION_STATE_BUFFER.position(0);
+
+        return;
+      }
+
+    @JSExport
+    public static int historyVerdict(int occurrences)
+      {
+        return occurrences >= MAX_STATE_REPETITION ? HISTORY_DRAW : HISTORY_OK;
+      }
+
     //  Valid after evaluate(); useful for cross-language diagnostics.
     @JSExport
     public static float lastNetworkLogit()
@@ -189,7 +249,7 @@ public final class PaganEvaluationWasm
         return EVALUATOR.lastNetworkLogit();
       }
 
-    //  Valid after evaluate(); currently always zero.
+    //  Valid after evaluate(); returns Pagan's weighted hand-coded heuristic logit.
     @JSExport
     public static float lastHeuristicLogit()
       {
@@ -364,14 +424,14 @@ public final class PaganEvaluationWasm
        Because it asks the existing game logic for legal moves, pins and king safety are handled automatically. */
     private static final class StaticExchangeEvaluator
       {
-        private static final int SCORE_PAWN         =   10;
-        private static final int SCORE_KNIGHT       =   20;
-        private static final int SCORE_CHAMPION     =   40;
-        private static final int SCORE_WIZARD       =   40;
-        private static final int SCORE_BISHOP       =   44;
-        private static final int SCORE_ROOK         =   60;
-        private static final int SCORE_QUEEN        =  120;
-        private static final int SCORE_KING         = 1000;
+        private static final int SCORE_PAWN     = PaganSpec.MATERIAL_PAWN;
+        private static final int SCORE_KNIGHT   = PaganSpec.MATERIAL_KNIGHT;
+        private static final int SCORE_CHAMPION = PaganSpec.MATERIAL_CHAMPION;
+        private static final int SCORE_WIZARD   = PaganSpec.MATERIAL_WIZARD;
+        private static final int SCORE_BISHOP   = PaganSpec.MATERIAL_BISHOP;
+        private static final int SCORE_ROOK     = PaganSpec.MATERIAL_ROOK;
+        private static final int SCORE_QUEEN    = PaganSpec.MATERIAL_QUEEN;
+        private static final int SCORE_KING     = PaganSpec.SEE_KING;
 
         private static final int MAX_EXCHANGE_PLIES =   64;
 
@@ -514,14 +574,16 @@ public final class PaganEvaluationWasm
                       "inputMove",
                       "outputGameState",
                       "outputMoves",
+                      "outputRepetitionState",
                       "packedWeights"},
             script = "" +
                      "if(typeof globalThis.omegaChessInstallPaganBuffers !== 'function')" +
                      "  throw new Error('omegaChessInstallPaganBuffers is not installed');" +
-                     "globalThis.omegaChessInstallPaganBuffers(inputGameState, inputMove, outputGameState, outputMoves, packedWeights);")
+                     "globalThis.omegaChessInstallPaganBuffers(inputGameState, inputMove, outputGameState, outputMoves, outputRepetitionState, packedWeights);")
     private static native void installBuffers(ByteBuffer inputGameState,
                                               ByteBuffer inputMove,
                                               ByteBuffer outputGameState,
                                               ByteBuffer outputMoves,
+                                              ByteBuffer outputRepetitionState,
                                               FloatBuffer packedWeights);
   }
