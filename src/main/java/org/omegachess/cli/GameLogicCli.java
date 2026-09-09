@@ -18,6 +18,8 @@ import org.omegachess.core.features.FeatureEncoding;
 import org.omegachess.core.features.FeatureScratch;
 import org.omegachess.core.features.FeatureSpec;
 
+import org.omegachess.eval.HeuristicEvaluator;
+
 /* Persistent JSONL command-line interface for Omega Chess.
 
    Protocol rules:
@@ -33,6 +35,7 @@ public final class GameLogicCli
     private static final GameState STATE = new GameState();
     private static final FeatureScratch FEATURE_SCRATCH = new FeatureScratch();
     private static final float[] FEATURE_BUFFER = new float[FeatureSpec.FEATURE_COUNT];
+    private static final HeuristicEvaluator HEURISTIC_EVALUATOR = new HeuristicEvaluator();
     private static final Move[] MOVE_BUFFER = new Move[GameState._MAX_MOVES];
     private static final Move[] LEGALITY_BUFFER = new Move[GameState._MAX_MOVES];
 
@@ -229,8 +232,10 @@ public final class GameLogicCli
     private static String interpretResponse(Map<String, String> request)
       {
         int i;
+
         decodeStateIntoWorkingState(require(request, "state"));
         FeatureEncoding.encode(STATE, FEATURE_BUFFER, FEATURE_SCRATCH);
+        float heuristicLogit = HEURISTIC_EVALUATOR.evaluate(STATE, FEATURE_SCRATCH);
                                                                     //  Most values are short representations such as 0.0, 1.0, 2.0.
                                                                     //  This capacity merely reduces StringBuilder growth.
         StringBuilder response = new StringBuilder(256 + FeatureSpec.FEATURE_COUNT * 5);
@@ -245,6 +250,10 @@ public final class GameLogicCli
         response.append(FeatureSpec.WIDTH).append(']');
         response.append(",\"feature_count\":");
         response.append(FeatureSpec.FEATURE_COUNT);
+
+        response.append(",\"heuristic_logit\":");
+        appendJsonFloat(response, heuristicLogit);
+
         response.append(",\"features\":[");
 
         for(i = 0; i < FeatureSpec.FEATURE_COUNT; i++)
