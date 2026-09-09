@@ -285,6 +285,12 @@ public final class GameLogicWasm
       }
 
     @JSExport
+    public static boolean repetitionBarrier_client()
+      {
+        return CURRENT_STATE.getMoveCounter() == 0;
+      }
+
+    @JSExport
     public static void draw()
       {
         int i, prevPawn;
