@@ -29,15 +29,6 @@ public final class GameLogic
         return gs.getMoves(buffer);
       }
 
-    /* Generate every legal move for a specified side.
-       Useful for diagnostics and some search operations. */
-    public static int legalMoves(GameState gs, boolean white, Move[] buffer)
-      {
-        requireState(gs);
-        requireMoveBuffer(buffer);
-        return gs.getMoves(white, buffer);
-      }
-
     /* Generate legal moves for one occupied square.
        The output buffer must have room for GameState._MAX_NUM_TARGETS moves. */
     public static int legalMovesFrom(GameState gs, int from, Move[] buffer)

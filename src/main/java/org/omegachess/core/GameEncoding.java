@@ -132,8 +132,8 @@ public final class GameEncoding
         if(previousPawnMove > 20)                                   //  Force blank.
           previousPawnMove = 0;
 
-        if(moveCounter > 100)                                       //  Force draw.
-          moveCounter = 100;
+        if(moveCounter > 150)                                       //  Force draw.
+          moveCounter = 150;
 
         gs.clearForDecoding();                                      //  Clear all 144 internal squares, including the non-playable sentinel border.
 

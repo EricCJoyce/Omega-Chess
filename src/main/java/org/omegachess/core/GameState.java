@@ -55,7 +55,7 @@ public final class GameState
     private int previousPawnMove;                                   //  Indicate which column:             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
                                                                     //  If it was a double move, these are { 1,  2,  3,  4,  5,  6,  7,  8,  9, 10};
                                                                     //  If it was a triple move, these are {11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-    private int moveCtr;                                            //  At 50, call it a draw.
+    private int moveCtr;                                            //  At 150 (= 2 * 75), call it a draw.
 
     /*****************************************************************
       Constructor
@@ -71,7 +71,7 @@ public final class GameState
         . . . . . . . . . .        ... 037 038 039 040 041 042 043 044 045 046 ...
         P P P P P P P P P P        ... 025 026 027 028 029 030 031 032 033 034 ...
         C R N B Q K B N R C        ... 013 014 015 016 017 018 019 020 021 022 ...
-      W                     W      000 ... ... ... ... ... ... ... ... ... ... 001   */
+      W                     W      000 ... ... ... ... ... ... ... ... ... ... 011   */
 
     public GameState()                                              //  Default board is starting position.
       {
@@ -157,6 +157,7 @@ public final class GameState
             blackQueensideLiberty = false;                          //  Black cannot Queenside.
             blackHasCastled = true;                                 //  Black has castled.
             previousPawnMove = 0;                                   //  Zero this out.
+            moveCtr++;
           }
         else if(isBlackQueenside(move))                             //  Black Queenside-Castle
           {
@@ -169,6 +170,7 @@ public final class GameState
             blackQueensideLiberty = false;                          //  Black cannot Queenside.
             blackHasCastled = true;                                 //  Black has castled.
             previousPawnMove = 0;                                   //  Zero this out.
+            moveCtr++;
           }
         else if(isWhiteKingside(move))                              //  White Kingside-Castle
           {
@@ -180,6 +182,7 @@ public final class GameState
             whiteQueensideLiberty = false;                          //  White cannot Queenside.
             whiteHasCastled = true;                                 //  White has castled.
             previousPawnMove = 0;                                   //  Zero this out.
+            moveCtr++;
           }
         else if(isWhiteQueenside(move))                             //  White Queenside-Castle
           {
@@ -192,6 +195,7 @@ public final class GameState
             whiteQueensideLiberty = false;                          //  White cannot Queenside.
             whiteHasCastled = true;                                 //  White has castled.
             previousPawnMove = 0;                                   //  Zero this out.
+            moveCtr++;
           }
         else if(enPassantVic != _NONE)                              //  En-passant capture
           {
@@ -199,7 +203,7 @@ public final class GameState
             board[move.to] = board[move.from];
             board[move.from] = _EMPTY;
 
-            moveCtr = 0;                                            //  Capture resets the 50-move counter.
+            moveCtr = 0;                                            //  Capture resets the 75-move counter.
             previousPawnMove = 0;                                   //  Zero this out.
           }
         else                                                        //  Any other type of non-castling, non-en-passant move.
@@ -230,7 +234,17 @@ public final class GameState
                                                                     //  Pawn promotion
             if(isPawn(move.from) && move.promo != _NO_PROMO && (row(move.to) == 10 || row(move.to) == 1))
               {
-                if(isWhite(move.from))
+                                                                    //  Capture of a rook entails loss of castling rights.
+                if(isWhite(move.to) && isRook(move.to) && move.to == 21)
+                  whiteKingsideLiberty = false;
+                else if(isWhite(move.to) && isRook(move.to) && move.to == 14)
+                  whiteQueensideLiberty = false;
+                else if(isBlack(move.to) && isRook(move.to) && move.to == 129)
+                  blackKingsideLiberty = false;
+                else if(isBlack(move.to) && isRook(move.to) && move.to == 122)
+                  blackQueensideLiberty = false;
+
+                if(isWhite(move.from))                              //  Handle promotion for white.
                   {
                     switch(move.promo)
                       {
@@ -242,7 +256,7 @@ public final class GameState
                         case _PROMO_QUEEN:    board[move.to] = _WHITE_QUEEN;     break;
                       }
                   }
-                else
+                else                                                //  Handle promotion for black.
                   {
                     switch(move.promo)
                       {
@@ -254,19 +268,10 @@ public final class GameState
                         case _PROMO_QUEEN:    board[move.to] = _BLACK_QUEEN;     break;
                       }
                   }
-                                                                    //  Capture of a rook entails loss of castling rights.
-                if(isWhite(move.to) && isRook(move.to) && move.to == 21)
-                  whiteKingsideLiberty = false;
-                else if(isWhite(move.to) && isRook(move.to) && move.to == 14)
-                  whiteQueensideLiberty = false;
-                else if(isBlack(move.to) && isRook(move.to) && move.to == 129)
-                  blackKingsideLiberty = false;
-                else if(isBlack(move.to) && isRook(move.to) && move.to == 122)
-                  blackQueensideLiberty = false;
 
                 board[move.from] = _EMPTY;
                 previousPawnMove = 0;                               //  Zero this out.
-                moveCtr = 0;                                        //  Pawn move resets the 50-move counter.
+                moveCtr = 0;                                        //  Pawn move resets the 75-move counter.
               }
             else                                                    //  Any other case.
               {
@@ -297,7 +302,7 @@ public final class GameState
                                                                     //  19 --> Double move occurred in Column I.
                                                                     //  20 --> Double move occurred in Column J.
                   }
-                if(isPawn(move.from) || !isEmpty(move.to))          //  Pawn move or capture reset the 50-move counter.
+                if(isPawn(move.from) || !isEmpty(move.to))          //  Pawn move or capture reset the 75-move counter.
                   moveCtr = 0;
                 else                                                //  Otherwise, increase the counter.
                   moveCtr++;
@@ -332,46 +337,21 @@ public final class GameState
     /* Is the given "index" attackable by any members of the indicated team? */
     public boolean inCheckBy(int index, boolean white)
       {
-        Move[] attacks = new Move[_MAX_NUM_TARGETS];
-        int attacksLen = 0;
-        int[] enemytargets = new int[_MAX_MOVES];
-        int enemyStrikeCtr = 0;
-        int i, j;
+        int i;
 
-        enemyStrikeCtr = 0;
+        if(oob(index))
+          return false;
+
         for(i = 0; i < _NONE; i++)
           {
-            if((isWhite(i) && white) || (isBlack(i) && !white))
+            if((white && isWhite(i)) || (!white && isBlack(i)))
               {
-                if(isPawn(i))
-                  attacksLen = getPawnAttacks(i, attacks);
-                else if(isKnight(i))
-                  attacksLen = getKnightMoves(i, attacks);
-                else if(isChampion(i))
-                  attacksLen = getChampionMoves(i, attacks);
-                else if(isWizard(i))
-                  attacksLen = getWizardMoves(i, attacks);
-                else if(isBishop(i))
-                  attacksLen = getBishopMoves(i, attacks);
-                else if(isRook(i))
-                  attacksLen = getRookMoves(i, attacks);
-                else if(isQueen(i))
-                  attacksLen = getQueenMoves(i, attacks);
-                else
-                  attacksLen = getKingNonCastle(i, attacks);
-
-                for(j = 0; j < attacksLen; j++)
-                  enemytargets[enemyStrikeCtr + j] = attacks[j].to;
-
-                enemyStrikeCtr += attacksLen;                       //  Increase offset.
+                if(attacksSquare(i, index))
+                  return true;
               }
           }
 
-        i = 0;
-        while(i < enemyStrikeCtr && enemytargets[i] != index)
-          i++;
-
-        return (i < enemyStrikeCtr);
+        return false;
       }
 
     /* This means, "Can I castle RIGHT NOW?" Not, "Do I still have Kingside rights?" */
@@ -605,28 +585,6 @@ public final class GameState
         for(index = 0; index < _NONE; index++)
           {
             if((whiteToMove && isWhite(index)) || (!whiteToMove && isBlack(index)))
-              {
-                potentialmovesCtr = getMovesIndex(index, potentialmoves);
-                for(i = 0; i < potentialmovesCtr; i++)
-                  buffer[movesCtr + i] = new Move(potentialmoves[i].from, potentialmoves[i].to, potentialmoves[i].promo);
-                movesCtr += potentialmovesCtr;
-              }
-          }
-
-        return movesCtr;
-      }
-
-    /* THIS FUNCTION FILTERS FOR CHECK!! */
-    public int getMoves(boolean white, Move[] buffer)
-      {
-        int movesCtr = 0;
-        Move[] potentialmoves = new Move[_MAX_NUM_TARGETS];
-        int potentialmovesCtr;
-        int index, i;
-
-        for(index = 0; index < _NONE; index++)
-          {
-            if((white && isWhite(index)) || (!white && isBlack(index)))
               {
                 potentialmovesCtr = getMovesIndex(index, potentialmoves);
                 for(i = 0; i < potentialmovesCtr; i++)
@@ -1464,6 +1422,84 @@ public final class GameState
         return movesCtr;
       }
 
+    /* Write to the given buffer indices of pieces belonging to white (if white) or to black (if !white) that attack index. */
+    public int attackersOfSquare(int index, boolean white, Move[] buffer)
+      {
+        int from, len = 0;
+
+        for(from = 0; from < _NONE; from++)
+          {
+            if(oob(from) || isEmpty(from))
+              continue;
+
+            if(isWhite(from) != white)
+              continue;
+
+            if(attacksSquare(from, index))
+              buffer[len++] = new Move(from, index, _NO_PROMO);
+          }
+
+        return len;
+      }
+
+    private boolean attacksSquare(int from, int target)
+      {
+        boolean white = isWhite(from);
+
+        if(isPawn(from))
+          {
+            if(white)
+              return target == ul(from) || target == ur(from);
+            else
+              return target == dl(from) || target == dr(from);
+          }
+
+        if(isKnight(from))
+          {
+            return target == ul(u(from)) || target == ur(u(from)) ||
+                   target == ur(r(from)) || target == dr(r(from)) ||
+                   target == dl(d(from)) || target == dr(d(from)) ||
+                   target == ul(l(from)) || target == dl(l(from));
+          }
+
+        if(isChampion(from))
+          {
+            return target == u(from) || target == u(u(from)) ||
+                   target == d(from) || target == d(d(from)) ||
+                   target == l(from) || target == l(l(from)) ||
+                   target == r(from) || target == r(r(from)) ||
+                   target == ul(ul(from)) || target == ur(ur(from)) ||
+                   target == dr(dr(from)) || target == dl(dl(from));
+          }
+
+        if(isWizard(from))
+          {
+            return target == ul(from) || target == ur(from) ||
+                   target == dr(from) || target == dl(from) ||
+                   target == u(u(ul(from))) || target == u(u(ur(from))) ||
+                   target == l(l(ul(from))) || target == r(r(ur(from))) ||
+                   target == d(d(dl(from))) || target == d(d(dr(from))) ||
+                   target == l(l(dl(from))) || target == r(r(dr(from)));
+          }
+
+        if(isKing(from))
+          {
+            return target == u(from) || target == ur(from) || target == r(from) || target == dr(from) ||
+                   target == d(from) || target == dl(from) || target == l(from) || target == ul(from);
+          }
+
+        if(isBishop(from))
+          return attacksAlongDiagonal(from, target);
+
+        if(isRook(from))
+          return attacksAlongOrthogonal(from, target);
+
+        if(isQueen(from))
+          return attacksAlongDiagonal(from, target) || attacksAlongOrthogonal(from, target);
+
+        return false;
+      }
+
     /*****************************************************************
       Terminal testing  */
 
@@ -1471,22 +1507,10 @@ public final class GameState
       {
         int i;
         int kpos = 0;
-        int wMatNonK = 0, bMatNonK = 0;                             //  Counts of pieces other than Kings.
         Move[] moves = new Move[_MAX_MOVES];
         int moveLen;
 
-        moveLen = getMoves(whiteToMove, moves);                     //  Get moves for side to move.
-
-        for(i = 0; i < _NONE; i++)                                  //  Count up all pieces that are not a King.
-          {
-            if(!isEmpty(i) && !isKing(i))
-              {
-                if(isWhite(i))
-                  wMatNonK++;
-                else
-                  bMatNonK++;
-              }
-          }
+        moveLen = getMoves(moves);                                  //  Get moves for side to move.
 
         if(moveLen == 0)                                            //  Game is over if side to move cannot move.
           {
@@ -1517,12 +1541,39 @@ public final class GameState
                 return GAME_OVER_STALEMATE;
               }
           }
-        else if(wMatNonK == 0 && bMatNonK == 0)                     //  Game is over if only Kings remain.
-          return GAME_OVER_STALEMATE;
-        else if(moveCtr >= 100)                                     //  Game is over if the move counter reaches 100.
+        else if(insufficientMaterial())                             //  Game is over if material insufficient to checkmate remains.
+            return GAME_OVER_STALEMATE;
+        else if(moveCtr >= 150)                                     //  Game is over if the move counter reaches 150.
           return GAME_OVER_STALEMATE;
 
         return GAME_ONGOING;
+      }
+
+    /* Rather conservatively, we're defining "insufficient material" as K + {N, C, W, B, R} vs K.
+       Mate in Omega Chess IS possible for K + Q vs K, and so K + P vs K is allowed, given that the pawn may promote to a queen. */
+    private boolean insufficientMaterial()
+      {
+        int i;
+        int nonKingCount = 0;
+        byte lonePiece = _EMPTY;
+
+        for(i = 0; i < _NONE; i++)
+          {
+            if(isEmpty(i) || isKing(i))
+              continue;
+
+            nonKingCount++;
+
+            if(nonKingCount > 1)
+              return false;
+
+            lonePiece = board[i];
+          }
+
+        if(nonKingCount == 0)
+          return true;
+
+        return lonePiece != _WHITE_PAWN  && lonePiece != _BLACK_PAWN  && lonePiece != _WHITE_QUEEN && lonePiece != _BLACK_QUEEN;
       }
 
     public boolean terminal()
@@ -1614,7 +1665,7 @@ public final class GameState
         this.blackQueensideLiberty = blackQueenside;
         this.blackHasCastled = blackCastled;
         this.previousPawnMove = previousPawnMove;
-        this.moveCtr = (byte)moveCounter;
+        this.moveCtr = moveCounter;
         return;
       }
 
@@ -2161,6 +2212,116 @@ public final class GameState
           }
 
         return len;
+      }
+
+    private boolean attacksAlongDiagonal(int from, int target)
+      {
+        int square;
+
+        square = ul(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = ul(square);
+          }
+
+        square = ur(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = ur(square);
+          }
+
+        square = dr(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = dr(square);
+          }
+
+        square = dl(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = dl(square);
+          }
+
+        return false;
+      }
+
+    private boolean attacksAlongOrthogonal(int from, int target)
+      {
+        int square;
+
+        square = u(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = u(square);
+          }
+
+        square = r(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = r(square);
+          }
+
+        square = d(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = d(square);
+          }
+
+        square = l(from);
+        while(!oob(square))
+          {
+            if(square == target)
+              return true;
+
+            if(!isEmpty(square))
+              break;
+
+            square = l(square);
+          }
+
+        return false;
       }
 
     /*****************************************************************
