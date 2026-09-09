@@ -258,12 +258,12 @@ function updateHUD()
 function allPromotablePiecesHUD(team)
   {
     var str;
-    str  = '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_KNIGHT);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/knight.jpg"/></a></td></tr>';
-    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_CHAMPION);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/champion.jpg"/></a></td></tr>';
-    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_WIZARD);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/wizard.jpg"/></a></td></tr>';
-    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_BISHOP);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/bishop.jpg"/></a></td></tr>';
-    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_ROOK);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/rook.jpg"/></a></td></tr>';
-    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_QUEEN);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/queen.jpg"/></a></td></tr>';
+    str  = '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_KNIGHT);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/knight.jpg"/></a></td></tr>';
+    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_CHAMPION);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/champion.jpg"/></a></td></tr>';
+    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_WIZARD);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/wizard.jpg"/></a></td></tr>';
+    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_BISHOP);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/bishop.jpg"/></a></td></tr>';
+    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_ROOK);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/rook.jpg"/></a></td></tr>';
+    str += '<tr><td><a href="javascript:;" onClick="choosePromo(_PROMO_QUEEN);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/queen.jpg"/></a></td></tr>';
     return str;
   }
 
@@ -271,12 +271,12 @@ function allPromotablePiecesHUD(team)
 function allPromotablePiecesDockedHUD(team)
   {
     var str;
-    str  = '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_KNIGHT);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/knight.jpg"/></a>';
-    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_CHAMPION);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/champion.jpg"/></a>';
-    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_WIZARD);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/wizard.jpg"/></a>';
-    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_BISHOP);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/bishop.jpg"/></a>';
-    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_ROOK);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/rook.jpg"/></a>';
-    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_QUEEN);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/chess/obj/img/hud/' + team + '/queen.jpg"/></a>';
+    str  = '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_KNIGHT);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/knight.jpg"/></a>';
+    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_CHAMPION);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/champion.jpg"/></a>';
+    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_WIZARD);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/wizard.jpg"/></a>';
+    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_BISHOP);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/bishop.jpg"/></a>';
+    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_ROOK);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/rook.jpg"/></a>';
+    str += '<a href="javascript:;" onClick="hidePanel(); choosePromo(_PROMO_QUEEN);"><img class="gamesettingbutton" src="https://www.ericjoycefilm.com/wastesoftime/boardgames/omegachess/obj/img/hud/' + team + '/queen.jpg"/></a>';
     return str;
   }
 
@@ -398,24 +398,7 @@ function updateAIPlaysBlack()
                   gamePieces[i].rotation.y = Math.PI;
               }
           }
-        /*
-        else
-          {
-            pagan.team = 'Black';
 
-            directionalLight1.position.set(1, -1, 1).normalize();
-            directionalLight2.position.set(1, 1, -1).normalize();
-
-            camera.position.set(CAMERA_X, CAMERA_Y, CAMERA_Z);
-            camera.rotation.set(0, 0, 0);
-
-            for(i = 0; i < gamePieces.length; i++)
-              {
-                if(gamePieces[i].chessrank == "Bishop")
-                  gamePieces[i].rotation.y = 0;
-              }
-          }
-        */
         resetCameraPositionAngle(angle);                            //  Force redraw
 
         pullGUIComponents();                                        //  Cue the A.I. to make the first move

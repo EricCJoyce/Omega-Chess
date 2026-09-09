@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-#define ZHASH_TABLE_SIZE   1635
+#define ZHASH_TABLE_SIZE   1786
 
 #define _WHITE_PAWN        0x01
 #define _WHITE_KNIGHT      0x02
@@ -1695,6 +1695,158 @@
 #define PREV_TRIPLE_COL_I  1633
 #define PREV_TRIPLE_COL_J  1634
 
+#define MOVE_CTR_0         1635
+#define MOVE_CTR_1         1636
+#define MOVE_CTR_2         1637
+#define MOVE_CTR_3         1638
+#define MOVE_CTR_4         1639
+#define MOVE_CTR_5         1640
+#define MOVE_CTR_6         1641
+#define MOVE_CTR_7         1642
+#define MOVE_CTR_8         1643
+#define MOVE_CTR_9         1644
+#define MOVE_CTR_10        1645
+#define MOVE_CTR_11        1646
+#define MOVE_CTR_12        1647
+#define MOVE_CTR_13        1648
+#define MOVE_CTR_14        1649
+#define MOVE_CTR_15        1650
+#define MOVE_CTR_16        1651
+#define MOVE_CTR_17        1652
+#define MOVE_CTR_18        1653
+#define MOVE_CTR_19        1654
+#define MOVE_CTR_20        1655
+#define MOVE_CTR_21        1656
+#define MOVE_CTR_22        1657
+#define MOVE_CTR_23        1658
+#define MOVE_CTR_24        1659
+#define MOVE_CTR_25        1660
+#define MOVE_CTR_26        1661
+#define MOVE_CTR_27        1662
+#define MOVE_CTR_28        1663
+#define MOVE_CTR_29        1664
+#define MOVE_CTR_30        1665
+#define MOVE_CTR_31        1666
+#define MOVE_CTR_32        1667
+#define MOVE_CTR_33        1668
+#define MOVE_CTR_34        1669
+#define MOVE_CTR_35        1670
+#define MOVE_CTR_36        1671
+#define MOVE_CTR_37        1672
+#define MOVE_CTR_38        1673
+#define MOVE_CTR_39        1674
+#define MOVE_CTR_40        1675
+#define MOVE_CTR_41        1676
+#define MOVE_CTR_42        1677
+#define MOVE_CTR_43        1678
+#define MOVE_CTR_44        1679
+#define MOVE_CTR_45        1680
+#define MOVE_CTR_46        1681
+#define MOVE_CTR_47        1682
+#define MOVE_CTR_48        1683
+#define MOVE_CTR_49        1684
+#define MOVE_CTR_50        1685
+#define MOVE_CTR_51        1686
+#define MOVE_CTR_52        1687
+#define MOVE_CTR_53        1688
+#define MOVE_CTR_54        1689
+#define MOVE_CTR_55        1690
+#define MOVE_CTR_56        1691
+#define MOVE_CTR_57        1692
+#define MOVE_CTR_58        1693
+#define MOVE_CTR_59        1694
+#define MOVE_CTR_60        1695
+#define MOVE_CTR_61        1696
+#define MOVE_CTR_62        1697
+#define MOVE_CTR_63        1698
+#define MOVE_CTR_64        1699
+#define MOVE_CTR_65        1700
+#define MOVE_CTR_66        1701
+#define MOVE_CTR_67        1702
+#define MOVE_CTR_68        1703
+#define MOVE_CTR_69        1704
+#define MOVE_CTR_70        1705
+#define MOVE_CTR_71        1706
+#define MOVE_CTR_72        1707
+#define MOVE_CTR_73        1708
+#define MOVE_CTR_74        1709
+#define MOVE_CTR_75        1710
+#define MOVE_CTR_76        1711
+#define MOVE_CTR_77        1712
+#define MOVE_CTR_78        1713
+#define MOVE_CTR_79        1714
+#define MOVE_CTR_80        1715
+#define MOVE_CTR_81        1716
+#define MOVE_CTR_82        1717
+#define MOVE_CTR_83        1718
+#define MOVE_CTR_84        1719
+#define MOVE_CTR_85        1720
+#define MOVE_CTR_86        1721
+#define MOVE_CTR_87        1722
+#define MOVE_CTR_88        1723
+#define MOVE_CTR_89        1724
+#define MOVE_CTR_90        1725
+#define MOVE_CTR_91        1726
+#define MOVE_CTR_92        1727
+#define MOVE_CTR_93        1728
+#define MOVE_CTR_94        1729
+#define MOVE_CTR_95        1730
+#define MOVE_CTR_96        1731
+#define MOVE_CTR_97        1732
+#define MOVE_CTR_98        1733
+#define MOVE_CTR_99        1734
+#define MOVE_CTR_100       1735
+#define MOVE_CTR_101       1736
+#define MOVE_CTR_102       1737
+#define MOVE_CTR_103       1738
+#define MOVE_CTR_104       1739
+#define MOVE_CTR_105       1740
+#define MOVE_CTR_106       1741
+#define MOVE_CTR_107       1742
+#define MOVE_CTR_108       1743
+#define MOVE_CTR_109       1744
+#define MOVE_CTR_110       1745
+#define MOVE_CTR_111       1746
+#define MOVE_CTR_112       1747
+#define MOVE_CTR_113       1748
+#define MOVE_CTR_114       1749
+#define MOVE_CTR_115       1750
+#define MOVE_CTR_116       1751
+#define MOVE_CTR_117       1752
+#define MOVE_CTR_118       1753
+#define MOVE_CTR_119       1754
+#define MOVE_CTR_120       1755
+#define MOVE_CTR_121       1756
+#define MOVE_CTR_122       1757
+#define MOVE_CTR_123       1758
+#define MOVE_CTR_124       1759
+#define MOVE_CTR_125       1760
+#define MOVE_CTR_126       1761
+#define MOVE_CTR_127       1762
+#define MOVE_CTR_128       1763
+#define MOVE_CTR_129       1764
+#define MOVE_CTR_130       1765
+#define MOVE_CTR_131       1766
+#define MOVE_CTR_132       1767
+#define MOVE_CTR_133       1768
+#define MOVE_CTR_134       1769
+#define MOVE_CTR_135       1770
+#define MOVE_CTR_136       1771
+#define MOVE_CTR_137       1772
+#define MOVE_CTR_138       1773
+#define MOVE_CTR_139       1774
+#define MOVE_CTR_140       1775
+#define MOVE_CTR_141       1776
+#define MOVE_CTR_142       1777
+#define MOVE_CTR_143       1778
+#define MOVE_CTR_144       1779
+#define MOVE_CTR_145       1780
+#define MOVE_CTR_146       1781
+#define MOVE_CTR_147       1782
+#define MOVE_CTR_148       1783
+#define MOVE_CTR_149       1784
+#define MOVE_CTR_150       1785
+
 /**************************************************************************************************
  Typedefs  */
 
@@ -1705,9 +1857,6 @@
 
 /**************************************************************************************************
  Globals  */
-                                                                    //  13,080 bytes.
-unsigned char zobristHashBuffer[ZHASH_TABLE_SIZE * 8];              //  Global array containing the serialized Zobrist-hasher values (unsigned long longs).
-                                                                    //  "Keys" are simply unisnged int values #defined above.
 
 /* Because it indexes into "zobristHashBuffer", the hash function is defined in negamax.cpp. */
 

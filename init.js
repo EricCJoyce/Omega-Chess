@@ -4,20 +4,30 @@ if(!Detector.webgl)
 var gameEngine;                                                     //  Compiled WebASM Module.
 var gameStateBuffer = null;                                         //  Byte buffer
 var gameOutputBuffer = null;                                        //  Byte buffer
+var gameLogicExposedBufferBytes = 0;
+
 const _GAMESTATE_BYTE_SIZE = 107;                                   //  Size (see Java code).
 const _MOVE_BYTE_SIZE = 3;                                          //  Size (see Java code).
 const _MOVEBUFFER_BYTE_SIZE = 64;                                   //  Size (see Java code).
 const _MAX_MOVES = 512;                                             //  Size (see Java code).
-const _ZHASH_TABLE_SIZE = 1635;                                     //  Size (see C code).
+const _ZHASH_TABLE_SIZE = 1786;                                     //  Size (see C code).
 const _HASH_VALUE_BYTE_SIZE = 8;                                    //  Size of long long.
 const _TRANSPO_TABLE_SIZE = 524288;                                 //  Size (see C code).
 const _TRANSPO_RECORD_BYTE_SIZE = 18;                               //  Size (see C code).
-const _PARAMETER_ARRAY_SIZE = 16;                                   //  Size (see C++ code).
-const _TREE_SEARCH_ARRAY_SIZE = 65536;                              //  Size (see C++ code).
+const _PARAMETER_ARRAY_SIZE = 12;                                   //  Size (see C++ code).
+const _NEGAMAX_NODE_STACK_CAPACITY = 32;                            //  Size (see C++ code).
+const _NEGAMAX_MOVE_ARENA_CAPACITY = 8192;                          //  Size (see C++ code).
 const _NEGAMAX_NODE_BYTE_SIZE = 161;                                //  Size (see C++ code).
 const _NEGAMAX_MOVE_BYTE_SIZE = 4;                                  //  Size (see C++ code).
 const _KILLER_MOVE_PER_PLY = 2;                                     //  Size (see C++ code).
 const _KILLER_MOVE_MAX_DEPTH = 64;                                  //  Size (see C++ code).
+const _STATS_BUFFER_SIZE = 16;                                      //  Size (see C++ code).
+const _REPETITION_HISTORY_CAPACITY = 150;                           //  (See C++ code.)
+const _REPETITION_HASH_BYTE_SIZE = 16;                              //  (See C++ code.)
+const _REPETITION_PATH_CAPACITY = _NEGAMAX_NODE_STACK_CAPACITY;
+const _REPETITION_PATH_PREFIX_CAPACITY = 1;                         //  (See C++ code.)
+const _REPETITION_PATH_HEADER_SIZE = 1;                             //  (See C++ code.)
+const _REPETITION_STATE_BYTE_SIZE = 106;                            //  (See C++ code.)
 
 var pagan = new Player();                                           //  Create the A.I. agent.
 
@@ -891,7 +901,7 @@ function selection(intersects)
 
 function getMoves()
   {
-    console.log('getMoves ' + Select_A)
+    //console.log('getMoves ' + Select_A)
     var len = gameEngine.getMovesIndex_client(Select_A);
     var i;
 

@@ -72,7 +72,7 @@ function move(a, b)
         var mid_x = midpoint(start_x, end_x);
         var mid_y = midpoint(start_y, end_y);
 
-        animate_startPos = {x: start_x, y: start_y, z:0};
+        animate_startPos = {x: start_x, y: start_y, z:gamePieces[animationTarget].ownZ};
         animate_midPos   = {x: mid_x,   y: mid_y,   z:GAMEPIECE_MOVEMENT_ZENITH};
         animate_endPos   = {x: end_x,   y: end_y,   z:gamePieces[animationTarget].ownZ};
 
@@ -110,7 +110,7 @@ function move(a, b)
                                                                     //  The A.I. promotion routine updates the game state at the end of promotion.
                 else
                   {
-                    gameEngine.makeMove_client(a, b, _NO_PROMO);    //  Update the game state.
+                    pagan.commitRealMove(a, b, _NO_PROMO);          //  Update the game state (and OBSERVE the update).
                     swapTurns();                                    //  Nobody's promoting now, swap turns.
                   }
               }
@@ -129,7 +129,7 @@ function move(a, b)
                                                                     //  THERFORE **DO NOT** UPDATE THE GAME-ENGINE YET!!!
                 else
                   {
-                    gameEngine.makeMove_client(a, b, _NO_PROMO);    //  Update the game state.
+                    pagan.commitRealMove(a, b, _NO_PROMO);          //  Update the game state (and OBSERVE the update).
                     swapTurns();                                    //  Nobody's promoting now, swap turns.
                   }
               }
@@ -443,7 +443,7 @@ function completePromotionHuman(a, b, p)
           }
       }
 
-    gameEngine.makeMove_client(a, b, p);                            //  HERE UPDATE THE GAME-ENGINE!!!
+    pagan.commitRealMove(a, b, p);                                  //  Update the game state (and OBSERVE the update).
 
     if(gamePieces[gamePieces.length - 1].chessrank == 'Champion')
       gamePieces[gamePieces.length - 1].ownZ = 8;
@@ -605,7 +605,7 @@ function completePromotionAI(a, b, p)
           }
       }
 
-    gameEngine.makeMove_client(a, b, p);                            //  HERE UPDATE THE GAME-ENGINE!!!
+    pagan.commitRealMove(a, b, p);                                  //  Update the game state (and OBSERVE the update).
 
     if(gamePieces[gamePieces.length - 1].chessrank == 'Champion')
       gamePieces[gamePieces.length - 1].ownZ = 8;
